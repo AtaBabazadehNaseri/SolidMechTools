@@ -1,0 +1,93 @@
+import type { Guide } from './types';
+import { fresh, withParam } from './helpers';
+
+export const planeStressInput: Guide = {
+  id: 'plane-stress-input',
+  track: 'Level 3',
+  title: 'Which 2D stiffness belongs in your plane-stress model?',
+  summary: 'Why the in-plane block of the 3D C is the wrong plane-stress input, how large the error is, and why plane strain locks as ν → ½.',
+  steps: [
+    {
+      title: 'The tempting shortcut',
+      body: [
+        'You have the full 3D stiffness C of a carbon/epoxy ply and need a 2D plane-stress model of a thin ply. The shortcut is to copy its in-plane entries C₁₁, C₁₂, C₂₂, C₁₆, C₂₆ and C₆₆ into the 2D matrix.',
+      ],
+      setup: (s) => fresh('ortho-cfrp', s, { overlays: { materialAxes: true, materialLines: true } }),
+      show: ['matrices'],
+      predict: {
+        question: 'Is the in-plane (1, 2, 6) block of the 3D C the right plane-stress stiffness?',
+        options: [
+          { text: 'Yes: the in-plane entries are the in-plane entries', feedback: 'They are the right entries for a different constraint: εzz = 0, not σzz = 0.' },
+          { text: 'No: plane stress needs the inverse of the in-plane block of S', correct: true },
+          {
+            text: 'Only if the material is isotropic',
+            feedback: 'Even for an isotropic material the block of C is E(1−ν)/((1+ν)(1−2ν)), not the plane-stress E/(1−ν²).',
+          },
+        ],
+      },
+      explain: [
+        'The badges on the matrices say it. In plane stress $\\bar{\\mathbf S}$ is the 3D block, and $\\bar{\\mathbf C}$ is “reduced”: its inverse, $\\bar{\\mathbf C} = (\\mathbf S_{[1,2,6]})^{-1}$. The in-plane block of $\\mathbf C$ is the plane-strain stiffness.',
+      ],
+    },
+    {
+      title: 'How wrong is the shortcut?',
+      body: ['Plane strain uses exactly that 3D block, so switching mode shows what the shortcut would give.'],
+      show: ['matrices'],
+      predict: {
+        question: 'Will the plane-strain C̄ be stiffer or softer than the plane-stress one?',
+        options: [
+          { text: 'Stiffer', correct: true },
+          { text: 'Softer', feedback: 'Holding εzz = 0 adds a constraint, and a constraint never makes a material softer.' },
+          { text: 'The same', feedback: 'Only if the out-of-plane Poisson couplings ν₁₃ and ν₂₃ were zero.' },
+        ],
+      },
+      controls: [{ kind: 'mode' }],
+      task: {
+        goal: 'Switch to plane strain and compare C̄₁₁, C̄₁₂ and C̄₂₂ with their plane-stress values.',
+        check: (s) => s.mode === 'strain',
+        solve: (s) => ({ ...s, mode: 'strain' }),
+      },
+      explain: [
+        'For this ply $\\bar C_{22}$ rises from 10.35 to 12.39 GPa (+20 %) and $\\bar C_{12}$ from 2.90 to 4.88 GPa (+68 %). $\\bar C_{11}$ barely moves (+1 %) because the fibres dominate it.',
+        'Copying the 3D block into a plane-stress model therefore makes the ply too stiff across the fibres and gets its Poisson coupling wrong by more than half.',
+      ],
+    },
+    {
+      title: 'Near-incompressible material',
+      body: ['Now an isotropic material, with ν and the mode unlocked.'],
+      setup: (s) => fresh('iso-steel', s),
+      show: ['matrices'],
+      predict: {
+        question: 'Raise ν toward ½. In which mode does C̄₁₁ grow without bound?',
+        options: [
+          { text: 'Plane stress', feedback: 'In plane stress C̄₁₁ = E/(1−ν²) stays finite at ν = ½: the sheet can thin freely.' },
+          { text: 'Plane strain', correct: true },
+          { text: 'Both', feedback: 'Only one of them forbids the thickness change.' },
+        ],
+      },
+      controls: [
+        { kind: 'mode' },
+        { kind: 'param', key: 'nu12' },
+      ],
+      task: {
+        goal: 'In plane strain, raise ν to 0.49 or more and watch C̄.',
+        check: (s) => s.mode === 'strain' && s.params.nu12 >= 0.49,
+        solve: (s) => withParam({ ...s, mode: 'strain' }, 'nu12', 0.495),
+      },
+      explain: [
+        'In plane strain $\\bar C_{11} = E(1-\\nu)/\\big((1+\\nu)(1-2\\nu)\\big)$: at ν = 0.495 it is about 25 times the plane-stress value, and it is infinite at ½.',
+        'A near-incompressible plane-strain body must deform at almost constant area. Low-order displacement elements cannot represent that well, so they **lock**: they come out far too stiff. Reduced or selective integration, B-bar, and mixed u–p formulations are the usual remedies.',
+      ],
+    },
+    {
+      title: 'A checklist for 2D input',
+      body: [
+        '**Plane stress** (thin plate, σzz = 0): $\\bar{\\mathbf C} = (\\mathbf S_{[1,2,6]})^{-1}$. From engineering constants this is the familiar $Q_{11} = E_1/(1-\\nu_{12}\\nu_{21})$ and so on.',
+        '**Plane strain** (long body, εzz = 0): $\\bar{\\mathbf C} = \\mathbf C_{[1,2,6]}$, the in-plane block of the 3D stiffness.',
+        'Rotating about the plate normal commutes with both reductions, so you may rotate the 3D matrix or the 2D one, provided you use one frame throughout.',
+        'If the section has out-of-plane couplings (trigonal, triclinic, or a section that is not a symmetry plane), plane strain also implies reaction shear stresses τyz and τxz. The Level 2 guide shows them.',
+      ],
+      show: ['matrices'],
+    },
+  ],
+};
