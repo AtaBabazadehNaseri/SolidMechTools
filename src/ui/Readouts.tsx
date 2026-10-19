@@ -7,12 +7,14 @@ interface Props {
   state: LabState;
   derived: LabDerived;
   dispatch: (a: Action) => void;
+  /** The constraint ladder; a guide can hold it back. */
+  ladder?: boolean;
 }
 
 const OOP_STRESS = ['\\sigma_{zz}', '\\tau_{yz}', '\\tau_{xz}'];
 const OOP_STRAIN = ['\\varepsilon_{zz}', '\\gamma_{yz}', '\\gamma_{xz}'];
 
-export function Readouts({ state, derived, dispatch }: Props) {
+export function Readouts({ state, derived, dispatch, ladder = true }: Props) {
   const { response, out, energy, constants: k } = derived;
   const pin = state.pinned;
   const isPS = state.mode === 'stress';
@@ -78,7 +80,7 @@ export function Readouts({ state, derived, dispatch }: Props) {
 
       <FullTensors state={state} derived={derived} />
 
-      <ConstraintLadder state={state} derived={derived} dispatch={dispatch} />
+      {ladder && <ConstraintLadder state={state} derived={derived} dispatch={dispatch} />}
 
       <details className="constants-box">
         <summary>3D engineering constants read in specimen axes</summary>

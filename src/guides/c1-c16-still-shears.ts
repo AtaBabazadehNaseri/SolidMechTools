@@ -18,51 +18,64 @@ export const c16StillShears: Guide = {
   summary: 'Why a zero coupling entry in the stiffness matrix does not mean a decoupled response, and which test each matrix answers.',
   steps: [
     {
-      title: 'Read the stiffness matrix',
-      body: [
+      title: 'Zero the coupling entry',
+      context: [
         'You are handed this in-plane stiffness for an FE model. The highlighted entry $\\bar C_{16}$ couples the normal strain $\\varepsilon_{xx}$ to the shear stress $\\tau_{xy}$. The specimen is pulled along x, traction-free otherwise, and it shears.',
       ],
       setup: (s) => select(fresh('mono-coupled', s, { overlays: { materialAxes: true }, magnification: 300 }), 'C'),
       show: ['matrices', 'response'],
       predict: {
-        question: 'Suppose you could make C̄₁₆ exactly zero. Would this specimen still shear when pulled along x?',
+        question: 'Suppose C̄₁₆ were exactly zero. Would this specimen still shear when pulled along x?',
         options: [
-          { text: 'No: C̄₁₆ is the extension–shear coupling, so no coupling means no shear', feedback: 'That reads C̄₁₆ as “the” coupling. A free specimen’s shear is set by the compliance, which mixes several stiffness entries. Let’s test it.' },
-          { text: 'Yes, it can still shear', correct: true, feedback: 'Let’s test it.' },
-          { text: 'Only in plane strain', feedback: 'Plane strain changes the matrices but not the logic; if the effect exists, it already shows in plane stress. Let’s test it.' },
+          {
+            text: 'No: C̄₁₆ is the extension–shear coupling, so no coupling means no shear',
+            feedback: 'That reads C̄₁₆ as “the” coupling. A free specimen’s shear is set by the compliance, which mixes several stiffness entries.',
+          },
+          { text: 'Yes, it could still shear', correct: true },
+          { text: 'Only in plane strain', feedback: 'Plane strain changes the matrices but not the logic; if the effect exists, it already shows in plane stress.' },
         ],
       },
-    },
-    {
-      title: 'Make C̄₁₆ zero',
-      body: [
-        'You cannot type into the matrix: it follows from the material constants. The coupling constant η₁₂,₁ is unlocked, and its slider has a snap point marked “C̄₁₆ = 0”.',
-      ],
-      show: ['matrices', 'response'],
-      controls: [{ kind: 'param', key: 'eta12_1' }],
-      extraSnaps: (s) => ({ eta12_1: [{ value: etaForZeroC16(s), label: 'C̄₁₆ = 0' }] }),
-      task: {
-        goal: 'Set η₁₂,₁ so that C̄₁₆ = 0, then look at the specimen and at γxy.',
-        check: (_s, d) => Math.abs(d.C2[0][2]) < 1e-6 * d.C2[2][2],
-        solve: (s) => withParam(s, 'eta12_1', etaForZeroC16(s)),
+      try: {
+        instructions: [
+          'You cannot type into the matrix: it follows from the material constants. Use the coupling constant η₁₂,₁; its slider has a snap point marked “C̄₁₆ = 0”.',
+        ],
+        controls: [{ kind: 'param', key: 'eta12_1' }],
+        extraSnaps: (s) => ({ eta12_1: [{ value: etaForZeroC16(s), label: 'C̄₁₆ = 0' }] }),
+        task: {
+          goal: 'Set η₁₂,₁ so that C̄₁₆ = 0.',
+          check: (_s, d) => Math.abs(d.C2[0][2]) < 1e-6 * d.C2[2][2],
+          solve: (s) => withParam(s, 'eta12_1', etaForZeroC16(s)),
+        },
+      },
+      observe: {
+        question: 'With C̄₁₆ = 0, what does the specimen do under the same pull?',
+        options: [
+          { text: 'It still shears, though much less', correct: true },
+          { text: 'It no longer shears', feedback: 'Read γxy in the Response table, or look closely at the outline.' },
+          { text: 'It shears just as much as before', feedback: 'Before, γxy was 0.8 εxx. Read it now in the Response table.' },
+        ],
       },
       explain: [
-        'C̄₁₆ is zero, and the specimen still shears: $\\gamma_{xy} = \\bar S_{16}\\,\\sigma_{xx} \\neq 0$. It is small here (γxy ≈ 0.075 εxx, see the Response table) but it is not zero, and with other materials it can be large.',
+        'C̄₁₆ is zero, and the specimen still shears: $\\gamma_{xy} = \\bar S_{16}\\,\\sigma_{xx} \\neq 0$. It is small here (γxy ≈ 0.075 εxx, down from 0.8 εxx) but it is not zero, and with other materials it can be large.',
       ],
     },
     {
       title: 'Why it still shears',
-      body: [
-        'The highlighted entry is now $\\bar S_{16}$. Open “In terms of C̄” on its card (top right) to see how it is built from the entries of $\\bar{\\mathbf C}$.',
-      ],
+      context: ['The highlighted entry is now $\\bar S_{16}$: what a free test reads, $\\gamma_{xy} = \\bar S_{16}\\,\\sigma_{xx}$.'],
       setup: (s) => select(s, 'S'),
       show: ['matrices', 'response'],
-      predict: {
+      try: {
+        instructions: ['Open “In terms of C̄” on the highlighted entry’s card (top right) to see how $\\bar S_{16}$ is built from the entries of $\\bar{\\mathbf C}$.'],
+      },
+      observe: {
         question: 'S̄₁₆ = (C̄₁₂C̄₂₆ − C̄₂₂C̄₁₆)/det C̄. With C̄₁₆ = 0, what is left?',
         options: [
           { text: 'Nothing: S̄₁₆ = 0', feedback: 'Only the second term vanishes.' },
           { text: 'C̄₁₂C̄₂₆ / det C̄', correct: true },
-          { text: '1/C̄₁₆, which is infinite', feedback: 'Entries of S̄ are cofactors of C̄, not reciprocals of its entries.' },
+          {
+            text: '1/C̄₁₆, which is infinite',
+            feedback: 'Entries of S̄ are cofactors of C̄ divided by det C̄ (the adjugate formula, S̄ = adj C̄ / det C̄), not reciprocals of its entries.',
+          },
         ],
       },
       explain: [
@@ -71,10 +84,9 @@ export const c16StillShears: Guide = {
     },
     {
       title: 'The converse',
-      body: ['Now make the free specimen stop shearing instead.'],
+      context: ['Now the opposite question: make the free specimen stop shearing.'],
       setup: (s) => select(s, 'C'),
       show: ['matrices', 'response'],
-      controls: [{ kind: 'param', key: 'eta12_1' }],
       predict: {
         question: 'When the free specimen no longer shears, will C̄₁₆ be zero?',
         options: [
@@ -82,10 +94,14 @@ export const c16StillShears: Guide = {
           { text: 'No', correct: true },
         ],
       },
-      task: {
-        goal: 'Make the specimen pull straight: γxy = 0 under σxx. The slider snaps at 0.',
-        check: (_s, d) => Math.abs(shearPerStretch(d.response.strain)) < 1e-6,
-        solve: (s) => withParam(s, 'eta12_1', 0),
+      try: {
+        instructions: ['Drag η₁₂,₁ until the specimen pulls straight (the slider snaps at 0), then read C̄₁₆.'],
+        controls: [{ kind: 'param', key: 'eta12_1' }],
+        task: {
+          goal: 'Make the specimen pull straight: γxy = 0 under σxx.',
+          check: (_s, d) => Math.abs(shearPerStretch(d.response.strain)) < 1e-6,
+          solve: (s) => withParam(s, 'eta12_1', 0),
+        },
       },
       explain: [
         'Now $\\bar S_{16} = 0$ but $\\bar C_{16} \\neq 0$. By the same cofactor rule, $\\bar C_{16} \\propto \\bar S_{12}\\bar S_{26} - \\bar S_{22}\\bar S_{16}$, and the first term survives.',
@@ -93,19 +109,30 @@ export const c16StillShears: Guide = {
     },
     {
       title: 'Where C̄₁₆ shows up',
-      body: [
+      context: [
         'If the free specimen does not shear, where does the nonzero C̄₁₆ appear? In the test that defines it: prescribe εxx and hold every other in-plane strain at zero.',
       ],
       show: ['matrices', 'loads', 'response'],
-      controls: [{ kind: 'experiments' }],
-      task: {
-        goal: 'Run the “Uniaxial strain” test (displacement-controlled) and look at τxy.',
-        check: (s, d) => s.load.control.every((c) => c === 'strain') && Math.abs(d.response.stress[2]) > 1e-3 * s.scales.stress,
-        solve: (s) => withExperiment(s, 'uniaxial-strain'),
+      try: {
+        instructions: ['Run the “Uniaxial strain” test (displacement-controlled).'],
+        controls: [{ kind: 'experiments' }],
+        task: {
+          goal: 'Run the “Uniaxial strain” test.',
+          check: (s, d) => s.load.control.every((c) => c === 'strain') && Math.abs(d.response.stress[2]) > 1e-3 * s.scales.stress,
+          solve: (s) => withExperiment(s, 'uniaxial-strain'),
+        },
+      },
+      observe: {
+        question: 'Which reactions appear under uniaxial strain?',
+        options: [
+          { text: 'σyy and a shear reaction τxy', correct: true },
+          { text: 'Only σyy', feedback: 'Read τxy in the Response table.' },
+          { text: 'None: the specimen does not want to shear, so nothing needs to hold it', feedback: 'Holding a strain at zero takes whatever traction it takes; read the reaction column.' },
+        ],
       },
       explain: [
-        'A shear reaction $\\tau_{xy} = \\bar C_{16}\\,\\varepsilon_{xx}$ appears: the grips must push sideways to stop the shear, even though a free specimen would not shear at all.',
-        '**Take-away for FE input:** entries of $\\bar{\\mathbf S}$ answer free, traction-controlled tests, and entries of $\\bar{\\mathbf C}$ answer fully constrained ones. A stiffness matrix with zero coupling entries does not guarantee a decoupled response. To judge coupling, look at the compliance, or at the eigenmodes.',
+        'A shear reaction $\\tau_{xy} = \\bar C_{16}\\,\\varepsilon_{xx}$ appears. This is a different experiment, not evidence that the free specimen was trying to shear; it was not. With the lateral strain held too, stretching along x would produce shear through C̄₁₆ if γxy were released, so holding γxy takes this reaction.',
+        '**Take-away for FE input:** entries of $\\bar{\\mathbf S}$ answer free, traction-controlled tests, and entries of $\\bar{\\mathbf C}$ answer fully constrained ones. A single zero coupling entry in the stiffness matrix does not guarantee zero coupling in a free test (only C̄₁₆ = C̄₂₆ = 0 together does). To judge coupling, look at the compliance, or at the eigenmodes.',
       ],
     },
   ],

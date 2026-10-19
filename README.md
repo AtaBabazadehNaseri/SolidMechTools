@@ -55,22 +55,27 @@ src/ui/          React + SVG views
 
 ### Guides
 
-The app opens in the **Lab**. The **Guides** tab holds short guided experiences.
-Each guide works through steps that:
-- set up the specimen;
-- show only the panels the step needs;
-- unlock only the relevant controls;
-- ask a multiple-choice prediction before those controls appear;
-- set a task that is checked automatically, with a "Show me" fallback.
+The app opens in the **Lab**. The **Guides** tab holds eleven short guided experiences at three levels.
+Each step sets up the specimen, shows only the panels it needs, and runs through up to five phases:
+1. **Context**: what is on screen and what is fixed. It gives no instructions.
+2. **Predict**: a multiple-choice question, asked only when the answer is not yet on screen. A reveal can hold back the load until the learner answers.
+3. **Try**: instructions, the unlocked controls, and a task that is checked automatically, with a "Show me" fallback.
+4. **Observe**: "what did you see?", asked once the task is done.
+5. **Explain**.
 
-"Continue in the Lab" hands over the exact current state.
+Entering a step by any route (Next, Back, the step dots, Restart) rebuilds the state the step is written for. "Continue in the Lab" hands over the exact current state.
 
 To add a guide:
-1. Write a `Guide` object in `src/guides/`.
+1. Write a `Guide` object in `src/guides/`; the step format is documented in `src/guides/types.ts`.
 2. Register it in `src/guides/index.ts`.
 3. Add any numbers it quotes to `guides.test.ts`.
 
-The tests walk every guide as a learner who presses "Show me". They check that each task starts unsolved and that "Show me" solves it.
+The tests walk every guide as a learner who presses "Show me", and they also jump straight to every step. They check that:
+- each task starts unsolved, including before its prediction, and "Show me" solves it;
+- each question has exactly one correct option;
+- each number a guide quotes matches the engine.
+
+`deferred/` keeps a guide whose out-of-plane steps wait for the 3D mode. It is not compiled.
 
 ### Conventions
 

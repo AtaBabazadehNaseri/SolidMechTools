@@ -152,3 +152,26 @@ describe('directional moduli', () => {
     }
   });
 });
+
+describe('directional Poisson ratio', () => {
+  it('ν(0) = νxy, ν(90°) = νyx, reciprocity ν(φ)/E(φ) = ν(φ+90°)/E(φ+90°)', () => {
+    const S6 = preset('mono-coupled');
+    const S2 = psCompliance(S6);
+    const C2 = psStiffness(S6);
+    expectClose(directionalModuli(S2, C2, 0).nu, -S2[1][0] / S2[0][0], 1e-12);
+    expectClose(directionalModuli(S2, C2, Math.PI / 2).nu, -S2[0][1] / S2[1][1], 1e-9);
+    for (const phi of [0.2, 0.9, 1.7, 2.6]) {
+      const a = directionalModuli(S2, C2, phi);
+      const b = directionalModuli(S2, C2, phi + Math.PI / 2);
+      expectClose(a.nu / a.E, b.nu / b.E, 1e-9);
+    }
+  });
+
+  it('isotropic: ν(φ) = ν in every direction; copper (001): ν goes negative along ⟨110⟩', () => {
+    const S2 = psCompliance(iso(1000, 0.3));
+    const C2 = psStiffness(iso(1000, 0.3));
+    for (const phi of [0, 0.5, 1.1]) expectClose(directionalModuli(S2, C2, phi).nu, 0.3, 1e-12);
+    const cu = preset('cubic-cu');
+    expect(directionalModuli(psCompliance(cu), psStiffness(cu), Math.PI / 4).nu).toBeCloseTo(-0.136, 2);
+  });
+});

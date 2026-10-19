@@ -7,6 +7,12 @@ interface Props {
   state: LabState;
   derived: LabDerived;
   dispatch: (a: Action) => void;
+  /** Principal axes and Mohr's circle. */
+  axes?: boolean;
+  /** Stiffness eigenmodes. */
+  kelvin?: boolean;
+  /** In a guide, the mode buttons wait for the step's prediction. */
+  locked?: boolean;
 }
 
 const deg = (rad: number) => (rad * 180) / Math.PI;
@@ -17,7 +23,7 @@ function axisGap(a: number, b: number): number {
   return d;
 }
 
-export function PrincipalPanel({ state, derived, dispatch }: Props) {
+export function PrincipalPanel({ state, derived, dispatch, axes = true, kelvin = true, locked = false }: Props) {
   const { principal, response, R, coaxial, kelvin2D } = derived;
   const ps = principal.stress;
   const pe = principal.strain;
@@ -30,7 +36,8 @@ export function PrincipalPanel({ state, derived, dispatch }: Props) {
 
   return (
     <section className="panel principal-panel">
-      <h2>Principal axes and Mohr's circle</h2>
+      <h2>{axes ? "Principal axes and Mohr's circle" : 'Stiffness eigenmodes'}</h2>
+      {axes && (
       <div className="principal-grid">
         <div>
           <dl className="axes-list">
@@ -76,8 +83,11 @@ export function PrincipalPanel({ state, derived, dispatch }: Props) {
           <Mohr state={state} stress={response.stress} strain={response.strain} />
         </div>
       </div>
+      )}
 
-      <h3>Stiffness eigenmodes (Kelvin modes of C̄)</h3>
+      {kelvin && (
+      <>
+      {axes && <h3>Stiffness eigenmodes (Kelvin modes of C̄)</h3>}
       <p className="hint">
         The stiffness tensor has no principal axes in the vector sense; its principal objects are strain modes for which{' '}
         <Tex>{'\\boldsymbol\\sigma = \\lambda\\,\\boldsymbol\\varepsilon'}</Tex>. In each mode stress and strain are coaxial. Apply one
@@ -85,7 +95,7 @@ export function PrincipalPanel({ state, derived, dispatch }: Props) {
       </p>
       <div className="kelvin-row">
         {kelvin2D.map((m, k) => (
-          <button key={k} className="kelvin-mode" onClick={() => dispatch({ type: 'loadCase', load: kelvinLoad(m, state.scales) })}>
+          <button key={k} className="kelvin-mode" disabled={locked} onClick={() => dispatch({ type: 'loadCase', load: kelvinLoad(m, state.scales) })}>
             <ModeThumb strain={m.strain} />
             <span>
               λ{['₁', '₂', '₃'][k]} = {fmt(toGPa(m.modulus), 4)} GPa
@@ -93,6 +103,8 @@ export function PrincipalPanel({ state, derived, dispatch }: Props) {
           </button>
         ))}
       </div>
+      </>
+      )}
     </section>
   );
 }

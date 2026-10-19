@@ -1,3 +1,7 @@
+// Deferred: the former Level 2 guide "Can an anisotropic crystal look isotropic?" (copper (111), quartz).
+// Its out-of-plane steps need the 3D mode; bring it back, in the five-phase step format of
+// src/guides/types.ts, once that mode exists. Not compiled or bundled.
+
 import { deriveLab, type LabState } from '../app/lab';
 import type { Guide } from './types';
 import { fresh } from './helpers';
@@ -48,7 +52,7 @@ export const looksIsotropic: Guide = {
     },
     {
       title: 'Turn it',
-      body: ['Watch the 2D matrices while the crystal turns in this plane.'],
+      body: ['Still the ⟂ [111] section, where E(φ) is a circle. Watch the 2D matrices while the crystal turns within this plane.'],
       show: ['matrices'],
       predict: {
         question: 'Will any entry of C̄ or S̄ change as you rotate the crystal in this plane?',
@@ -107,8 +111,11 @@ export const looksIsotropic: Guide = {
         question: 'Switch to plane strain. Which reactions appear besides σzz?',
         options: [
           { text: 'None', feedback: 'Plane strain also holds the out-of-plane shears at zero.' },
-          { text: 'Out-of-plane shear stresses τyz and τxz', correct: true },
-          { text: 'An in-plane shear stress τxy', feedback: 'In plane the section is isotropic, so a pull along x alone produces no τxy.' },
+          { text: 'Out-of-plane shear reactions (τyz here; at other angles τxz as well)', correct: true },
+          {
+            text: 'An in-plane shear stress τxy',
+            feedback: 'τxy is prescribed zero by the boundary conditions here (traction-free). And because the plane is isotropic, the pull along x produces no shear strain γxy either.',
+          },
         ],
       },
       controls: [{ kind: 'mode' }],
@@ -118,7 +125,8 @@ export const looksIsotropic: Guide = {
         solve: (s) => ({ ...s, mode: 'strain' }),
       },
       explain: [
-        'Plane strain holds γyz = γxz = 0, so the three-fold coupling now appears as reaction shear stresses τyz and τxz. A plane-strain model of such a crystal carries those stresses implicitly. That is right if the real body is restrained that way; if it is not, a generalized plane-strain or 3D model is needed.',
+        'Plane strain holds γyz = γxz = 0, so the three-fold coupling now appears as reaction shear stresses. At this orientation only τyz appears: the pull runs along a 2-fold axis of quartz, and that symmetry forbids τxz. Rotate the crystal and τxz appears as well.',
+        'A plane-strain model of such a crystal carries these reactions implicitly. That is right if the real body is restrained that way. If it is not, use a formulation that explicitly allows out-of-plane shear deformation, or a 3D model. Note that some generalized-plane-strain formulations still hold γyz = γxz = 0.',
       ],
     },
   ],

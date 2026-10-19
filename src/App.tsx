@@ -2,6 +2,7 @@ import { useEffect, useMemo, useReducer, useState } from 'react';
 import type { PlaneMode } from './mechanics';
 import { type Overlays, type Selection, deriveLab, deriveMaterial, entryExperiment, initialState, reducer, snapshotOf } from './app/lab';
 import { GUIDES, type PanelId } from './guides';
+import { entryState } from './guides/runner';
 import { Specimen, SpecimenLegend } from './ui/Specimen';
 import { MatrixGrid } from './ui/MatrixGrid';
 import { EntryInfo } from './ui/EntryInfo';
@@ -10,7 +11,7 @@ import { LoadPanel, MagnificationControl } from './ui/LoadPanel';
 import { MatrixLegend, PlaneConstantsStrip } from './ui/MatrixGrid';
 import { Readouts } from './ui/Readouts';
 import { PrincipalPanel } from './ui/PrincipalPanel';
-import { DirectionalPanel } from './ui/DirectionalPanel';
+import { DirectionalPanel, RotationSweep } from './ui/DirectionalPanel';
 import { Details } from './ui/Details';
 import { GuideLibrary, GuideRail, type GuideRun } from './ui/GuideRail';
 
@@ -34,7 +35,8 @@ const MODE_TIPS: Record<string, string> = {
   '3d': 'The full 6×6 response of a cube.',
 };
 
-const ALL_PANELS: PanelId[] = ['matrices', 'loads', 'directional', 'principal', 'response'];
+// The Lab shows everything; the rotation sweep sits inside the directional panel there.
+const ALL_PANELS: PanelId[] = ['matrices', 'loads', 'directional', 'principal', 'kelvin', 'response', 'ladder'];
 
 function omit<T>(o: Record<number, T>, k: number): Record<number, T> {
   return Object.fromEntries(Object.entries(o).filter(([key]) => Number(key) !== k));
@@ -71,22 +73,24 @@ export default function App() {
   const step = guide && run ? guide.steps[run.step] : null;
   const inGuide = view === 'guides' && step !== null;
 
-  // Remember a task as done once it has been solved, even if the learner keeps playing.
+  // Remember a task as done once it has been solved, even if the learner keeps playing. Only after the
+  // prediction: before it, the state is often deliberately unloaded and may satisfy a check trivially.
   useEffect(() => {
-    if (run && step?.task && !run.solved[run.step] && step.task.check(state, derived))
+    const predictedHere = run && (!step?.predict || run.answers[run.step] !== undefined);
+    if (run && predictedHere && step?.try?.task && !run.solved[run.step] && step.try.task.check(state, derived))
       setRun({ ...run, solved: { ...run.solved, [run.step]: true } });
   }, [run, step, state, derived]);
 
+  // Every way into a step (Next, Back, the step dots, Restart) rebuilds the state that step is written for.
   const goTo = (k: number, from = run) => {
     if (!guide || !from) return;
-    const target = guide.steps[k];
-    if (target.setup) dispatch({ type: 'replace', state: target.setup(state) });
+    dispatch({ type: 'replace', state: entryState(guide, k, from.start, from.answers[k] !== undefined) });
     setRun({ ...from, step: k });
   };
   const startGuide = (id: string) => {
     const g = GUIDES.find((x) => x.id === id)!;
-    const fresh: GuideRun = { guideId: id, step: 0, answers: {}, solved: {} };
-    if (g.steps[0].setup) dispatch({ type: 'replace', state: g.steps[0].setup(state) });
+    const fresh: GuideRun = { guideId: id, step: 0, answers: {}, observed: {}, solved: {}, start: state };
+    dispatch({ type: 'replace', state: entryState(g, 0, state, false) });
     setRun(fresh);
     setView('guides');
   };
@@ -98,14 +102,16 @@ export default function App() {
     setRun(null);
   };
 
-  const show = new Set<PanelId>(inGuide ? step!.show : ALL_PANELS);
+  // Nothing on screen may change, or give the answer away, before a step's prediction is answered.
+  const predicted = !inGuide || !step!.predict || run!.answers[run!.step] !== undefined;
+  const show = new Set<PanelId>(inGuide ? [...step!.show, ...(predicted ? (step!.try?.show ?? []) : [])] : ALL_PANELS);
   // In a guide the directional plot is often the point of the step, so it sits beside the specimen.
   const directionalRight = inGuide && show.has('directional');
-  const hasRight = show.has('principal') || show.has('response') || directionalRight;
-  // A step's controls, including dragging the ring, unlock only after its prediction is answered.
-  const answered = !inGuide || !step!.predict || run!.answers[run!.step] !== undefined;
-  const thetaUnlocked = !inGuide || (answered && !!step!.controls?.some((c) => c.kind === 'theta'));
-  const cutUnlocked = !inGuide || (answered && !!step!.controls?.some((c) => c.kind === 'cut'));
+  const sweepPanel = inGuide && show.has('sweep');
+  const hasRight = show.has('principal') || show.has('kelvin') || show.has('response') || directionalRight || sweepPanel;
+  const unlocked = (kind: 'theta' | 'cut') => !inGuide || (predicted && !!step!.try?.controls?.some((c) => c.kind === kind));
+  const thetaUnlocked = unlocked('theta');
+  const cutUnlocked = unlocked('cut');
 
   const nonzero = (v: number, ref: number) => Math.abs(v) > 1e-12 * Math.max(ref, 1e-300);
   const sRef = Math.max(...response.stress.map(Math.abs));
@@ -196,12 +202,13 @@ export default function App() {
                   const reveal = step!.predict?.reveal;
                   if (reveal) dispatch({ type: 'replace', state: reveal(state) });
                 }}
+                onObserve={(option) => setRun({ ...run!, observed: { ...run!.observed, [run!.step]: option } })}
                 onStep={(k) => goTo(k)}
                 onRestartStep={() => {
-                  setRun({ ...run!, answers: omit(run!.answers, run!.step), solved: omit(run!.solved, run!.step) });
-                  if (step!.setup) dispatch({ type: 'replace', state: step!.setup(state) });
+                  setRun({ ...run!, answers: omit(run!.answers, run!.step), observed: omit(run!.observed, run!.step), solved: omit(run!.solved, run!.step) });
+                  dispatch({ type: 'replace', state: entryState(guide!, run!.step, run!.start, false) });
                 }}
-                onShowMe={() => step!.task && dispatch({ type: 'replace', state: step!.task.solve(state) })}
+                onShowMe={() => step!.try?.task && dispatch({ type: 'replace', state: step!.try.task.solve(state) })}
                 onExit={() => setRun(null)}
                 onFinish={finishGuide}
                 onContinueInLab={() => setView('lab')}
@@ -279,18 +286,34 @@ export default function App() {
                 cutDeg={state.cutDeg}
                 onCut={(deg) => cutUnlocked && dispatch({ type: 'cut', deg })}
                 stressRef={state.scales.stress}
+                lineAxes={
+                  state.classId === 'cubic' || state.classId === 'tetragonal'
+                    ? [0, 1, 2].filter((k) => Math.hypot(derived.R[0][k], derived.R[1][k]) > 0.9)
+                    : [0]
+                }
               />
               <MagnificationControl state={state} dispatch={dispatch} maxStrain={Math.max(...response.strain.map(Math.abs))} />
             </section>
-            {show.has('loads') && <LoadPanel state={state} dispatch={dispatch} />}
+            {show.has('loads') && <LoadPanel state={state} dispatch={dispatch} locked={!predicted} />}
             {show.has('directional') && !directionalRight && <DirectionalPanel state={state} derived={derived} material={material} dispatch={dispatch} />}
           </div>
 
           {hasRight && (
             <div className="col-right">
-              {directionalRight && <DirectionalPanel state={state} derived={derived} material={material} dispatch={dispatch} />}
-              {show.has('response') && <Readouts state={state} derived={derived} dispatch={dispatch} />}
-              {show.has('principal') && <PrincipalPanel state={state} derived={derived} dispatch={dispatch} />}
+              {sweepPanel && (
+                <RotationSweep
+                  key={`${run!.guideId}-${run!.step}`}
+                  state={state}
+                  onTheta={thetaUnlocked ? (deg) => dispatch({ type: 'theta', deg }) : undefined}
+                  initial={step!.sweep}
+                  panel
+                />
+              )}
+              {directionalRight && <DirectionalPanel state={state} derived={derived} material={material} dispatch={dispatch} sweep={false} />}
+              {show.has('response') && <Readouts state={state} derived={derived} dispatch={dispatch} ladder={show.has('ladder')} />}
+              {(show.has('principal') || show.has('kelvin')) && (
+                <PrincipalPanel state={state} derived={derived} dispatch={dispatch} axes={show.has('principal')} kelvin={show.has('kelvin')} locked={!predicted} />
+              )}
             </div>
           )}
         </main>

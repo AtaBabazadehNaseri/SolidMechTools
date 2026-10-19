@@ -153,6 +153,12 @@ function trackFor(cls: SymmetryClassDef, params: Params, key: string): Track {
   return { min: Math.min(a - pad, v), max: Math.max(b + pad, v), log: false };
 }
 
+/** Slider ranges centred on the given constants (a decade either way for moduli). */
+export function tracksFor(classId: SymmetryClassId, params: Params): Record<string, Track> {
+  const cls = SYMMETRY_CLASSES[classId];
+  return Object.fromEntries(cls.params.map((d) => [d.key, trackFor(cls, params, d.key)]));
+}
+
 const DEFAULT_OVERLAYS: Overlays = { materialAxes: true, materialLines: true, principalStress: false, principalStrain: false, cut: false };
 
 export function initialState(presetId: string, keep?: Partial<LabState>): LabState {
@@ -168,7 +174,7 @@ export function initialState(presetId: string, keep?: Partial<LabState>): LabSta
     custom: false,
     classId: preset.classId,
     params: { ...preset.params },
-    tracks: Object.fromEntries(cls.params.map((d) => [d.key, trackFor(cls, preset.params, d.key)])),
+    tracks: tracksFor(preset.classId, preset.params),
     section: preset.section,
     thetaDeg: 0,
     mode,
@@ -435,7 +441,7 @@ export function constraintLadder(C2: Mat): LadderRung[] {
 // ---------------------------------------------------------------------------
 // Rotation sweep: the current experiment repeated at every material angle.
 
-export type SweepQuantity = 'exx' | 'eyy' | 'gxy' | 'sxx' | 'syy' | 'txy' | 'zz' | 'energy' | 'stiffness' | 'nu' | 'eta';
+export type SweepQuantity = 'exx' | 'eyy' | 'gxy' | 'sxx' | 'syy' | 'txy' | 'zz' | 'energy' | 'stiffness' | 'Ex' | 'nu' | 'eta';
 
 export const SWEEP_QUANTITIES: Array<{ id: SweepQuantity; label: string; unit: string }> = [
   { id: 'exx', label: 'εxx', unit: '10⁻³' },
@@ -447,6 +453,7 @@ export const SWEEP_QUANTITIES: Array<{ id: SweepQuantity; label: string; unit: s
   { id: 'zz', label: 'εzz (plane stress) / σzz (plane strain)', unit: '10⁻³ / MPa' },
   { id: 'energy', label: 'strain energy W', unit: 'kJ/m³' },
   { id: 'stiffness', label: 'apparent stiffness dσxx/dεxx', unit: 'GPa' },
+  { id: 'Ex', label: 'Eₓ = 1/S̄₁₁: Young’s modulus along x (free test)', unit: 'GPa' },
   { id: 'eta', label: 'η xy,x: extension–shear coupling (free test)', unit: '' },
   { id: 'nu', label: 'ν xy: Poisson ratio (free test)', unit: '' },
 ];
@@ -480,6 +487,8 @@ export function sweepValue(s: LabState, q: SweepQuantity, thetaDeg: number): num
       return S2[2][0] / S2[0][0];
     case 'nu':
       return -S2[1][0] / S2[0][0];
+    case 'Ex':
+      return 1 / S2[0][0] / 1000;
     case 'stiffness':
       return apparentStiffness(inverse(S2), s.load.control, 0) / 1000;
   }

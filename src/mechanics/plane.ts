@@ -116,16 +116,20 @@ export function strainEnergyDensity(r: PlaneResponse): number {
  *   G(φ)  = 1 / S̄_ntnt   shear stress τ_nt alone
  * Always E(φ) ≤ Cn(φ).
  */
-export function directionalModuli(S2: Mat, C2: Mat, phi: number): { E: number; Cn: number; G: number } {
+export function directionalModuli(S2: Mat, C2: Mat, phi: number): { E: number; Cn: number; G: number; nu: number } {
   const c = Math.cos(phi);
   const s = Math.sin(phi);
   const nStress = [c * c, s * s, c * s]; // σ_V per unit σ_nn
   const nStrain = [c * c, s * s, 2 * c * s]; // ε_V per unit ε_nn
   const tShear = [-2 * c * s, 2 * c * s, c * c - s * s]; // σ_V per unit τ_nt; also γ_nt = tShear·ε_V
+  const tLateral = [s * s, c * c, -c * s]; // ε_tt = tLateral·ε_V
+  const eps = matVec(S2, nStress);
   return {
-    E: 1 / dot(nStress, matVec(S2, nStress)),
+    E: 1 / dot(nStress, eps),
     Cn: dot(nStrain, matVec(C2, nStrain)),
     G: 1 / dot(tShear, matVec(S2, tShear)),
+    // In-plane Poisson ratio for a pull along n: −ε_tt/ε_nn. Its partner for a pull along t is nu(φ + 90°).
+    nu: -dot(tLateral, eps) / dot(nStress, eps),
   };
 }
 

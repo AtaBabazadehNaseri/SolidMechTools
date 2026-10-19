@@ -9,13 +9,15 @@ interface Props {
   derived: LabDerived;
   material: MaterialDerived;
   dispatch: (a: Action) => void;
+  /** The collapsible rotation sweep (a guide shows it as its own panel instead). */
+  sweep?: boolean;
 }
 
 const N = 180;
 const RAD = 92;
 
-export function DirectionalPanel({ state, derived, material, dispatch }: Props) {
-  const [view, setView] = useState<'E' | 'G'>('E');
+export function DirectionalPanel({ state, derived, material, dispatch, sweep = true }: Props) {
+  const [view, setView] = useState<PolarView>('E');
   const { S2, C2, R, coaxial, planeExt } = derived;
   const S = material.S6mat;
   const axisE = [0, 1, 2].map((i) => 1 / S[i][i]);
@@ -29,13 +31,16 @@ export function DirectionalPanel({ state, derived, material, dispatch }: Props) 
   return (
     <section className="panel directional">
       <div className="panel-head">
-        <h2>Directional moduli (specimen plane)</h2>
+        <h2>Directional properties (specimen plane)</h2>
         <div className="seg small-seg">
           <button className={view === 'E' ? 'on' : ''} onClick={() => setView('E')}>
             E and C̄ₙ
           </button>
           <button className={view === 'G' ? 'on' : ''} onClick={() => setView('G')}>
             G
+          </button>
+          <button className={view === 'nu' ? 'on' : ''} onClick={() => setView('nu')}>
+            ν
           </button>
         </div>
       </div>
@@ -131,64 +136,122 @@ export function DirectionalPanel({ state, derived, material, dispatch }: Props) 
           </li>
         </ul>
       </details>
-      <RotationSweep state={state} dispatch={dispatch} />
+      {sweep && <RotationSweep state={state} onTheta={(deg) => dispatch({ type: 'theta', deg })} />}
     </section>
   );
 }
 
-function Polar({ S2, C2, R, view, coaxial }: { S2: Mat; C2: Mat; R: Mat; view: 'E' | 'G'; coaxial: number[] }) {
+type PolarView = 'E' | 'G' | 'nu';
+
+/** Polar path pieces of r(φ), split where the sign changes; negative pieces are drawn at |r|. */
+function signedPaths(phis: number[], vals: number[], scale: number): Array<{ d: string; neg: boolean }> {
+  const out: Array<{ d: string; neg: boolean }> = [];
+  let cur: string[] = [];
+  let neg = vals[0] < 0;
+  const pt = (k: number) => {
+    const r = (RAD * Math.abs(vals[k])) / scale;
+    return `${(r * Math.cos(phis[k])).toFixed(2)},${(-r * Math.sin(phis[k])).toFixed(2)}`;
+  };
+  vals.forEach((v, k) => {
+    if (k > 0 && v < 0 !== neg) {
+      out.push({ d: `M${cur.join(' L')}`, neg });
+      cur = [pt(k - 1)]; // start at the last point (near r = 0) so the pieces join
+      neg = v < 0;
+    }
+    cur.push(pt(k));
+  });
+  out.push({ d: `M${cur.join(' L')}`, neg });
+  return out;
+}
+
+function Polar({ S2, C2, R, view, coaxial }: { S2: Mat; C2: Mat; R: Mat; view: PolarView; coaxial: number[] }) {
   const samples = Array.from({ length: N + 1 }, (_, k) => {
     const phi = (2 * Math.PI * k) / N;
-    return { phi, ...directionalModuli(S2, C2, phi) };
+    return { phi, ...directionalModuli(S2, C2, phi), nuT: directionalModuli(S2, C2, phi + Math.PI / 2).nu };
   });
-  const key: Array<'E' | 'Cn' | 'G'> = view === 'E' ? ['Cn', 'E'] : ['G'];
-  const max = Math.max(...samples.flatMap((s) => key.map((kk) => s[kk])));
-  const path = (kk: 'E' | 'Cn' | 'G') =>
-    samples
-      .map((s, k) => {
-        const r = (RAD * s[kk]) / max;
-        return `${k === 0 ? 'M' : 'L'}${(r * Math.cos(s.phi)).toFixed(2)},${(-r * Math.sin(s.phi)).toFixed(2)}`;
-      })
-      .join(' ') + ' Z';
+  const phis = samples.map((s) => s.phi);
   const a1: [number, number] = [R[0][0], R[1][0]];
   const a1len = Math.hypot(...a1);
-  const x0 = (RAD * samples[0][view === 'E' ? 'E' : 'G']) / max;
+
+  let body: React.ReactNode;
+  let max: number;
+  let maxLabel: string;
+  let x0: number;
+  let legend: React.ReactNode;
+  if (view === 'nu') {
+    max = Math.max(...samples.flatMap((s) => [Math.abs(s.nu), Math.abs(s.nuT)]), 1e-6);
+    maxLabel = fmt(max, 3);
+    x0 = (RAD * Math.abs(samples[0].nu)) / max;
+    body = (
+      <>
+        {signedPaths(phis, samples.map((s) => s.nuT), max).map((p, i) => (
+          <path key={`t${i}`} d={p.d} className={p.neg ? 'polar-nu2 neg' : 'polar-nu2'} />
+        ))}
+        {signedPaths(phis, samples.map((s) => s.nu), max).map((p, i) => (
+          <path key={`n${i}`} d={p.d} className={p.neg ? 'polar-nu1 neg' : 'polar-nu1'} />
+        ))}
+      </>
+    );
+    legend = (
+      <>
+        <span className="lg-e">ν₁₂-type: pull along φ, measure across</span>
+        <span className="lg-q">ν₂₁-type: pull across φ, measure along</span>
+        <span className="lg-c">dashed: negative (drawn at |ν|)</span>
+      </>
+    );
+  } else {
+    const keys: Array<'E' | 'Cn' | 'G'> = view === 'E' ? ['Cn', 'E'] : ['G'];
+    max = Math.max(...samples.flatMap((s) => keys.map((kk) => s[kk])));
+    maxLabel = `${fmt(toGPa(max), 3)} GPa`;
+    x0 = (RAD * samples[0][view === 'E' ? 'E' : 'G']) / max;
+    const path = (kk: 'E' | 'Cn' | 'G') => signedPaths(phis, samples.map((s) => s[kk]), max)[0].d + ' Z';
+    body =
+      view === 'E' ? (
+        <>
+          <path d={path('Cn')} className="polar-q" />
+          <path d={path('E')} className="polar-e" />
+          {coaxial
+            .flatMap((a) => [a, a + Math.PI])
+            .map((a, i) => (
+              <line key={i} x1={(RAD + 2) * Math.cos(a)} y1={-(RAD + 2) * Math.sin(a)} x2={(RAD + 12) * Math.cos(a)} y2={-(RAD + 12) * Math.sin(a)} className="polar-coax" />
+            ))}
+        </>
+      ) : (
+        <path d={path('G')} className="polar-g" />
+      );
+    legend =
+      view === 'E' ? (
+        <>
+          <span className="lg-e">E(φ): uniaxial stress</span>
+          <span className="lg-q">C̄ₙ(φ): uniaxial strain</span>
+          <span className="lg-c">ticks: coaxial directions</span>
+        </>
+      ) : (
+        <span className="lg-g">G(φ): shear stress τnt alone</span>
+      );
+  }
 
   return (
     <div className="polar">
-      <svg viewBox="-120 -112 240 224" role="img" aria-label="Directional moduli">
+      <svg viewBox="-120 -112 240 224" role="img" aria-label="Directional properties in the specimen plane">
         {[0.5, 1].map((f) => (
           <circle key={f} r={RAD * f} className="polar-grid" />
         ))}
         <line x1={-RAD - 8} y1={0} x2={RAD + 8} y2={0} className="polar-axis" />
         <line x1={0} y1={-RAD - 8} x2={0} y2={RAD + 8} className="polar-axis" />
         {a1len > 0.3 && <line x1={(-RAD * a1[0]) / a1len} y1={(RAD * a1[1]) / a1len} x2={(RAD * a1[0]) / a1len} y2={(-RAD * a1[1]) / a1len} className="polar-mat" />}
-        {view === 'E' ? (
-          <>
-            <path d={path('Cn')} className="polar-q" />
-            <path d={path('E')} className="polar-e" />
-          </>
-        ) : (
-          <path d={path('G')} className="polar-g" />
-        )}
-        {view === 'E' &&
-          coaxial.flatMap((a) => [a, a + Math.PI]).map((a, i) => (
-            <line key={i} x1={(RAD + 2) * Math.cos(a)} y1={-(RAD + 2) * Math.sin(a)} x2={(RAD + 12) * Math.cos(a)} y2={-(RAD + 12) * Math.sin(a)} className="polar-coax" />
-          ))}
+        {body}
         <circle cx={x0} cy={0} r={4} className="polar-dot" />
         <text x={RAD + 10} y={-4} className="polar-text">x</text>
-        <text x={4} y={-RAD + 10} className="polar-text">{fmt(toGPa(max), 3)} GPa</text>
+        <text x={4} y={-RAD + 10} className="polar-text">{maxLabel}</text>
       </svg>
+      {view === 'nu' && (
+        <div className="polar-read">
+          along x: ν<sub>xy</sub> = {fmt(samples[0].nu, 4, 1e-12)}, ν<sub>yx</sub> = {fmt(samples[0].nuT, 4, 1e-12)}
+        </div>
+      )}
       <div className="polar-legend">
-        {view === 'E' ? (
-          <>
-            <span className="lg-e">E(φ): uniaxial stress</span>
-            <span className="lg-q">C̄ₙ(φ): uniaxial strain</span>
-            <span className="lg-c">ticks: coaxial directions</span>
-          </>
-        ) : (
-          <span className="lg-g">G(φ): shear stress τnt alone</span>
-        )}
+        {legend}
         <span className="lg-m">material axis 1</span>
       </div>
     </div>
@@ -213,8 +276,20 @@ function niceTicks(lo: number, hi: number, n = 4): number[] {
  * The current experiment repeated at every material angle: what happens to
  * this particular test as the material turns under a fixed load.
  */
-function RotationSweep({ state, dispatch }: { state: LabState; dispatch: (a: Action) => void }) {
-  const [q, setQ] = useState<SweepQuantity>('gxy');
+export function RotationSweep({
+  state,
+  onTheta,
+  initial = 'gxy',
+  panel = false,
+}: {
+  state: LabState;
+  /** Sets θ from the plot; without it the plot only reads. */
+  onTheta?: (deg: number) => void;
+  initial?: SweepQuantity;
+  /** Always open, as a panel of its own. */
+  panel?: boolean;
+}) {
+  const [q, setQ] = useState<SweepQuantity>(initial);
   const [hover, setHover] = useState<number | null>(null);
   const data = useMemo(
     () => rotationSweep(state, q),
@@ -226,7 +301,7 @@ function RotationSweep({ state, dispatch }: { state: LabState; dispatch: (a: Act
   const component: Record<SweepQuantity, [number, 'stress' | 'strain'] | null> = {
     exx: [0, 'strain'], eyy: [1, 'strain'], gxy: [2, 'strain'],
     sxx: [0, 'stress'], syy: [1, 'stress'], txy: [2, 'stress'],
-    zz: null, energy: null, stiffness: null, eta: null, nu: null,
+    zz: null, energy: null, stiffness: null, Ex: null, eta: null, nu: null,
   };
   const comp = component[q];
   const prescribed = comp !== null && state.load.control[comp[0]] === comp[1];
@@ -257,9 +332,8 @@ function RotationSweep({ state, dispatch }: { state: LabState; dispatch: (a: Act
   const shown = hover ?? cur;
   const point = at(shown);
 
-  return (
-    <details className="sweep">
-      <summary>Rotation sweep: this test at every material angle</summary>
+  const body = (
+    <>
       <div className="sweep-head">
         <select value={q} onChange={(e) => setQ(e.target.value as SweepQuantity)} aria-label="Quantity to sweep">
           {SWEEP_QUANTITIES.map((x) => (
@@ -274,17 +348,17 @@ function RotationSweep({ state, dispatch }: { state: LabState; dispatch: (a: Act
       </div>
       <svg
         viewBox={`0 0 ${SW} ${SH}`}
-        className="sweep-plot"
+        className={onTheta ? 'sweep-plot' : 'sweep-plot read-only'}
         role="img"
         aria-label={`${meta.label} versus material angle; click to set the angle`}
         tabIndex={0}
         onPointerMove={(e) => setHover(thetaAt(e))}
         onPointerLeave={() => setHover(null)}
-        onClick={(e) => dispatch({ type: 'theta', deg: thetaAt(e) })}
+        onClick={(e) => onTheta?.(thetaAt(e))}
         onKeyDown={(e) => {
-          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+          if (onTheta && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
             e.preventDefault();
-            dispatch({ type: 'theta', deg: Math.max(-90, Math.min(90, cur + (e.key === 'ArrowLeft' ? -1 : 1))) });
+            onTheta(Math.max(-90, Math.min(90, cur + (e.key === 'ArrowLeft' ? -1 : 1))));
           }
         }}
       >
@@ -312,8 +386,21 @@ function RotationSweep({ state, dispatch }: { state: LabState; dispatch: (a: Act
           ? ' This component is prescribed by the boundary conditions, so it cannot change; pick another quantity.'
           : flat
             ? ' This quantity does not change with θ for this material and plane.'
-            : ' Click the plot (or use ← →) to set θ.'}
+            : onTheta
+              ? ' Click the plot (or use ← →) to set θ.'
+              : ''}
       </p>
+    </>
+  );
+  return panel ? (
+    <section className="panel sweep sweep-panel">
+      <h2>Rotation sweep: this test at every material angle</h2>
+      {body}
+    </section>
+  ) : (
+    <details className="sweep">
+      <summary>Rotation sweep: this test at every material angle</summary>
+      {body}
     </details>
   );
 }

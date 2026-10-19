@@ -58,7 +58,8 @@ export function EntryInfo({ selection, mode, S2, C2, onRun }: Props) {
   const M = isS ? S2 : C2;
   const value = toDisplay(matrix, M[i][j]);
   const zeroTol = 1e-9 * Math.max(...M.flat().map((v) => Math.abs(toDisplay(matrix, v))));
-  const unit = isS ? 'TPa⁻¹' : 'GPa';
+  // KaTeX has no glyphs for Unicode superscripts, so units inside TeX use TeX markup.
+  const unitTex = isS ? '\\mathrm{TPa}^{-1}' : '\\mathrm{GPa}';
   const other: MatrixId = isS ? 'C' : 'S';
   const cof = cofactorParts(other, isS ? C2 : S2, i, j);
   const unit2 = isS ? 'GPa²' : 'TPa⁻²';
@@ -66,7 +67,7 @@ export function EntryInfo({ selection, mode, S2, C2, onRun }: Props) {
   return (
     <div className="entry-info">
       <div className="entry-head">
-        <Tex>{`${sym} = ${fmt(value, 4, zeroTol).replace(/−/g, '-')}\\ \\text{${unit}}`}</Tex>
+        <Tex>{`${sym} = ${fmt(value, 4, zeroTol).replace(/−/g, '-')}\\ ${unitTex}`}</Tex>
         <span className={`tag cat-${cat}`}>{CATEGORY_NAME[cat]}</span>
       </div>
 

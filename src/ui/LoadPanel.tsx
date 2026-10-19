@@ -7,6 +7,8 @@ import { Tex } from './Tex';
 interface Props {
   state: LabState;
   dispatch: (a: Action) => void;
+  /** In a guide, read-only until the step's prediction is answered. */
+  locked?: boolean;
 }
 
 const sameLoad = (a: LabState['load'], b: LabState['load']) =>
@@ -14,11 +16,12 @@ const sameLoad = (a: LabState['load'], b: LabState['load']) =>
 
 const CONTROL_NAME: Record<Control, string> = { stress: 'Traction', strain: 'Displacement' };
 
-export function LoadPanel({ state, dispatch }: Props) {
+export function LoadPanel({ state, dispatch, locked = false }: Props) {
   const { load, scales } = state;
 
   return (
     <section className="panel load-panel">
+      <fieldset className="plain" disabled={locked}>
       <div className="load-head">
         <h2>Boundary conditions</h2>
         <div className="experiments">
@@ -80,6 +83,7 @@ export function LoadPanel({ state, dispatch }: Props) {
         Idealized uniform boundary conditions on a homogeneous specimen: uniform face tractions produce a uniform stress equal to
         them, and prescribed face displacements produce a uniform strain. Real grips constrain only the ends.
       </p>
+      </fieldset>
     </section>
   );
 }

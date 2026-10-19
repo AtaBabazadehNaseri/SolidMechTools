@@ -31,6 +31,8 @@ interface Props {
   cutDeg: number;
   onCut: (deg: number) => void;
   stressRef: number;
+  /** Material axes (0, 1, 2) to draw material lines along: axis 1 for fibres, both in-plane cube axes for a crystal. */
+  lineAxes: number[];
 }
 
 type Pt = [number, number];
@@ -115,17 +117,20 @@ export function Specimen(p: Props) {
     gridLines.push([[-H, c], [H, c]]);
   }
 
-  // Material lines parallel to the projected axis 1.
-  const axis1: Pt = [p.R[0][0], p.R[1][0]];
-  const a1len = Math.hypot(...axis1);
+  // Material lines parallel to the projected material axes in p.lineAxes.
   const texture: Array<[Pt, Pt]> = [];
-  if (ov.materialLines && a1len > 0.3) {
-    const d: Pt = [axis1[0] / a1len, axis1[1] / a1len];
-    const n: Pt = [-d[1], d[0]];
-    for (let o = -2 * H; o <= 2 * H; o += 11) {
-      texture.push([[o * n[0] - 2 * H * d[0], o * n[1] - 2 * H * d[1]], [o * n[0] + 2 * H * d[0], o * n[1] + 2 * H * d[1]]]);
+  if (ov.materialLines)
+    for (const k of p.lineAxes) {
+      const ax: Pt = [p.R[0][k], p.R[1][k]];
+      const len = Math.hypot(...ax);
+      if (len <= 0.3) continue;
+      const d: Pt = [ax[0] / len, ax[1] / len];
+      const n: Pt = [-d[1], d[0]];
+      const gap = p.lineAxes.length > 1 ? 22 : 11;
+      for (let o = -2 * H; o <= 2 * H; o += gap) {
+        texture.push([[o * n[0] - 2 * H * d[0], o * n[1] - 2 * H * d[1]], [o * n[0] + 2 * H * d[0], o * n[1] + 2 * H * d[1]]]);
+      }
     }
-  }
 
   const arrows = tractionArrows(p.stress, p.control, map, p.stressRef);
 
