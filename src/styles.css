@@ -35,36 +35,35 @@
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #15171a;
-    --panel: #1d2024;
-    --border: #33373d;
-    --text: #e6e7e9;
-    --muted: #9aa0a8;
-    --faint: #5d626a;
-    --accent: #7fb0f0;
-    --applied: #7fb0f0;
-    --reaction: #f59e6b;
-    --stress: #f472b6;
-    --strain: #b69cff;
-    --material: #4fd1c0;
-    --warn: #f0b35b;
-    --ghost: #94a3b8;
-    --specimen-fill: #22324a;
-    --specimen-stroke: #7fb0f0;
-    --reference: #858a92;
-    --grid: rgba(230, 231, 233, 0.13);
-    --texture: rgba(79, 209, 192, 0.55);
-    --cat-diagonal: #262a30;
-    --cat-nn: #2b2540;
-    --cat-ns: #3a2e1c;
-    --cat-nn-text: #c4b5fd;
-    --cat-ns-text: #f6c27a;
-    --band-ok: #1f3d39;
-    --band-bad: #4a2a24;
-    color-scheme: dark;
-  }
+/* Dark theme. index.html sets data-theme before the first paint: the system setting by default, or the viewer's choice (src/ui/theme.ts). */
+:root[data-theme='dark'] {
+  --bg: #15171a;
+  --panel: #1d2024;
+  --border: #33373d;
+  --text: #e6e7e9;
+  --muted: #9aa0a8;
+  --faint: #5d626a;
+  --accent: #7fb0f0;
+  --applied: #7fb0f0;
+  --reaction: #f59e6b;
+  --stress: #f472b6;
+  --strain: #b69cff;
+  --material: #4fd1c0;
+  --warn: #f0b35b;
+  --ghost: #94a3b8;
+  --specimen-fill: #22324a;
+  --specimen-stroke: #7fb0f0;
+  --reference: #858a92;
+  --grid: rgba(230, 231, 233, 0.13);
+  --texture: rgba(79, 209, 192, 0.55);
+  --cat-diagonal: #262a30;
+  --cat-nn: #2b2540;
+  --cat-ns: #3a2e1c;
+  --cat-nn-text: #c4b5fd;
+  --cat-ns-text: #f6c27a;
+  --band-ok: #1f3d39;
+  --band-bad: #4a2a24;
+  color-scheme: dark;
 }
 
 * {
@@ -2094,4 +2093,18 @@ fieldset.plain:disabled {
 }
 .oop-note {
   margin: 4px 0 8px;
+}
+
+/* Theme override beside the view switch, visible in every view. */
+.brand {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+.brand h1 {
+  flex-basis: 100%;
+}
+.theme-switch button {
+  padding: 2px 9px;
 }

@@ -15,6 +15,13 @@ import { PrincipalPanel } from './ui/PrincipalPanel';
 import { DirectionalPanel, RotationSweep } from './ui/DirectionalPanel';
 import { Details } from './ui/Details';
 import { GuideLibrary, GuideRail, type GuideRun } from './ui/GuideRail';
+import { type ThemePreference, useTheme } from './ui/theme';
+
+const THEMES: Array<{ id: ThemePreference; label: string; tip: string }> = [
+  { id: 'system', label: 'Auto', tip: 'Follow the system setting' },
+  { id: 'light', label: 'Light', tip: 'Always light' },
+  { id: 'dark', label: 'Dark', tip: 'Always dark' },
+];
 
 const MODES: Array<{ id: PlaneMode | '3d'; label: string }> = [
   { id: 'stress', label: '2D plane stress' },
@@ -74,6 +81,7 @@ export default function App() {
   const [start] = useState(startState);
   const [state, dispatch] = useReducer(reducer, start.state);
   const [linkMessage, setLinkMessage] = useState(start.message);
+  const [theme, setTheme] = useTheme();
   const derived = useMemo(() => deriveLab(state), [state]);
   const material = useMemo(() => deriveMaterial(state.classId, state.params), [state.classId, state.params]);
   const { response, S2, C2 } = derived;
@@ -145,6 +153,13 @@ export default function App() {
             <button className={view === 'guides' ? 'on' : ''} onClick={() => setView('guides')}>
               Guides
             </button>
+          </div>
+          <div className="seg small-seg theme-switch" role="radiogroup" aria-label="Theme">
+            {THEMES.map((th) => (
+              <button key={th.id} className={theme === th.id ? 'on' : ''} aria-pressed={theme === th.id} title={th.tip} onClick={() => setTheme(th.id)}>
+                {th.label}
+              </button>
+            ))}
           </div>
         </div>
         {view === 'lab' && (

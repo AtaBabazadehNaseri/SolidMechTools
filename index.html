@@ -22,6 +22,18 @@
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="628" />
     <meta name="twitter:card" content="summary_large_image" />
+
+    <!-- Theme before the first paint: the viewer's choice (src/ui/theme.ts), else the system setting. -->
+    <script>
+      (function () {
+        var pref = null;
+        try {
+          pref = localStorage.getItem('etl.theme');
+        } catch (e) {}
+        var dark = pref === 'dark' || (pref !== 'light' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
