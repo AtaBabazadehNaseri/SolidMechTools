@@ -19,7 +19,8 @@
 import { type Mat, inverse, zeros } from './linalg';
 import { rotateComplianceVoigt } from './tensor';
 
-export type SymmetryClassId =
+/** The 8 elastic symmetry classes of a 3D material. */
+export type SpaceClassId =
   | 'isotropic'
   | 'cubic'
   | 'hexagonal'
@@ -28,6 +29,11 @@ export type SymmetryClassId =
   | 'orthotropic'
   | 'monoclinic'
   | 'triclinic';
+
+/** The 4 symmetry classes of in-plane (2D) elasticity data: isotropic, square (4-fold), rectangular, oblique. */
+export type PlaneClassId = 'plane-isotropic' | 'plane-square' | 'plane-orthotropic' | 'plane-anisotropic';
+
+export type SymmetryClassId = SpaceClassId | PlaneClassId;
 
 export type Params = Record<string, number>;
 
@@ -46,6 +52,8 @@ export interface ParamDef {
 export interface SymmetryClassDef {
   id: SymmetryClassId;
   name: string;
+  /** 3: a material with all six stress components. 2: in-plane data only (see embedPlane). */
+  dimension: 2 | 3;
   independentConstants: number;
   /** Axis convention for this class. */
   convention: string;
@@ -125,6 +133,7 @@ function sym6(entries: Array<[number, number, number]>): Mat {
 
 const isotropic: SymmetryClassDef = {
   id: 'isotropic',
+  dimension: 3,
   name: 'Isotropic',
   independentConstants: 2,
   convention: 'No preferred direction.',
@@ -142,6 +151,7 @@ const isotropic: SymmetryClassDef = {
 
 const cubic: SymmetryClassDef = {
   id: 'cubic',
+  dimension: 3,
   name: 'Cubic',
   independentConstants: 3,
   convention: 'Axes 1, 2, 3 along the cube edges ⟨100⟩.',
@@ -160,6 +170,7 @@ const cubic: SymmetryClassDef = {
 
 const hexagonal: SymmetryClassDef = {
   id: 'hexagonal',
+  dimension: 3,
   name: 'Hexagonal (transversely isotropic)',
   independentConstants: 5,
   convention: 'Axis 3 is the hexagonal c-axis; the 1–2 plane is isotropic (G₁₂ = E₁ / 2(1+ν₁₂)).',
@@ -180,6 +191,7 @@ const hexagonal: SymmetryClassDef = {
 
 const tetragonal: SymmetryClassDef = {
   id: 'tetragonal',
+  dimension: 3,
   name: 'Tetragonal',
   independentConstants: 6,
   convention: 'Axis 3 is the 4-fold axis; axes 1, 2 lie along ⟨100⟩ (classes 4mm, 4̄2m, 422, 4/mmm).',
@@ -201,6 +213,7 @@ const tetragonal: SymmetryClassDef = {
 
 const trigonal: SymmetryClassDef = {
   id: 'trigonal',
+  dimension: 3,
   name: 'Trigonal',
   independentConstants: 6,
   convention:
@@ -226,6 +239,7 @@ const trigonal: SymmetryClassDef = {
 
 const orthotropic: SymmetryClassDef = {
   id: 'orthotropic',
+  dimension: 3,
   name: 'Orthotropic',
   independentConstants: 9,
   convention: 'Axes 1, 2, 3 normal to the three mirror planes.',
@@ -240,6 +254,7 @@ const orthotropic: SymmetryClassDef = {
 
 const monoclinic: SymmetryClassDef = {
   id: 'monoclinic',
+  dimension: 3,
   name: 'Monoclinic',
   independentConstants: 13,
   convention:
@@ -267,6 +282,7 @@ for (let i = 0; i < 6; i++) for (let j = i + 1; j < 6; j++) TRICLINIC_KEYS.push(
 
 const triclinic: SymmetryClassDef = {
   id: 'triclinic',
+  dimension: 3,
   name: 'Triclinic',
   independentConstants: 21,
   convention: 'No symmetry beyond the inversion centre; all 21 constants independent.',
@@ -284,6 +300,85 @@ const triclinic: SymmetryClassDef = {
   },
 };
 
+// ---------------------------------------------------------------------------
+// In-plane (2D) data. A 3×3 compliance fixes only the in-plane response, so it
+// is carried as a 6×6 whose out-of-plane block is a decoupled placeholder.
+
+/**
+ * Embed an in-plane compliance S̄ (order 11, 22, 12) in a 6×6. The placeholder
+ * out-of-plane block (S33 = S̄11, S44 = S55 = S̄66, no coupling to the plane)
+ * makes both plane reductions return S̄ exactly and reduces positive
+ * definiteness to that of S̄. It is affine in the same constants as S̄, so the
+ * knob intervals stay exact. Nothing computed from the placeholder is shown.
+ */
+export function embedPlane(S2: Mat): Mat {
+  const S = zeros(6);
+  const at = [0, 1, 5];
+  for (let a = 0; a < 3; a++) for (let b = 0; b < 3; b++) S[at[a]][at[b]] = S2[a][b];
+  S[2][2] = S2[0][0];
+  S[3][3] = S2[2][2];
+  S[4][4] = S2[2][2];
+  return S;
+}
+
+function planeClass(
+  id: PlaneClassId,
+  name: string,
+  convention: string,
+  params: ParamDef[],
+  inPlane: (p: Params) => Mat,
+): SymmetryClassDef {
+  return { id, name, dimension: 2, independentConstants: params.length, convention, params, build: (p) => embedPlane(inPlane(p)) };
+}
+
+const planeIsotropic = planeClass(
+  'plane-isotropic',
+  'Isotropic (2D)',
+  'In-plane data only. No preferred in-plane direction.',
+  [param('E1', "Young's modulus (any in-plane direction)", 'E'), param('nu12', "Poisson's ratio (any in-plane pair)", '\\nu')],
+  ({ E1: E, nu12: nu }) => [
+    [1 / E, -nu / E, 0],
+    [-nu / E, 1 / E, 0],
+    [0, 0, (2 * (1 + nu)) / E],
+  ],
+);
+
+const planeSquare = planeClass(
+  'plane-square',
+  'Square (2D, 4-fold)',
+  'In-plane data only. Axes 1 and 2 are equivalent (a 4-fold axis normal to the plane).',
+  [param('E1', "Young's modulus along axis 1 (E₁ = E₂)"), param('nu12'), param('G12')],
+  ({ E1: E, nu12: nu, G12: G12v }) => [
+    [1 / E, -nu / E, 0],
+    [-nu / E, 1 / E, 0],
+    [0, 0, 1 / G12v],
+  ],
+);
+
+const planeOrthotropic = planeClass(
+  'plane-orthotropic',
+  'Orthotropic (2D)',
+  'In-plane data only. Axes 1 and 2 are normal to the two in-plane mirror lines.',
+  ['E1', 'E2', 'nu12', 'G12'].map((k) => param(k)),
+  ({ E1, E2, nu12, G12: G12v }) => [
+    [1 / E1, -nu12 / E1, 0],
+    [-nu12 / E1, 1 / E2, 0],
+    [0, 0, 1 / G12v],
+  ],
+);
+
+const planeAnisotropic = planeClass(
+  'plane-anisotropic',
+  'Anisotropic (2D)',
+  'In-plane data only. No in-plane symmetry: all six in-plane constants are independent.',
+  ['E1', 'E2', 'nu12', 'G12', 'eta12_1', 'eta12_2'].map((k) => param(k)),
+  ({ E1, E2, nu12, G12: G12v, eta12_1, eta12_2 }) => [
+    [1 / E1, -nu12 / E1, eta12_1 / E1],
+    [-nu12 / E1, 1 / E2, eta12_2 / E2],
+    [eta12_1 / E1, eta12_2 / E2, 1 / G12v],
+  ],
+);
+
 export const SYMMETRY_CLASSES: Record<SymmetryClassId, SymmetryClassDef> = {
   isotropic,
   cubic,
@@ -293,7 +388,14 @@ export const SYMMETRY_CLASSES: Record<SymmetryClassId, SymmetryClassDef> = {
   orthotropic,
   monoclinic,
   triclinic,
+  'plane-isotropic': planeIsotropic,
+  'plane-square': planeSquare,
+  'plane-orthotropic': planeOrthotropic,
+  'plane-anisotropic': planeAnisotropic,
 };
+
+export const SPACE_CLASSES: SpaceClassId[] = ['isotropic', 'cubic', 'hexagonal', 'tetragonal', 'trigonal', 'orthotropic', 'monoclinic', 'triclinic'];
+export const PLANE_CLASSES: PlaneClassId[] = ['plane-isotropic', 'plane-square', 'plane-orthotropic', 'plane-anisotropic'];
 
 /** Constants of `cls` read back from a compliance that has that symmetry. */
 export function paramsFromCompliance(cls: SymmetryClassDef, S: Mat): Params {
@@ -346,7 +448,12 @@ export interface MaterialPreset {
   name: string;
   classId: SymmetryClassId;
   params: Params;
-  section: SectionId;
+  /** 'custom' uses `orientation`, e.g. for a material entered by the user. */
+  section: SectionId | 'custom';
+  /** Material → specimen rotation when section is 'custom': its columns are axes 1, 2, 3 written in x, y, z. */
+  orientation?: Mat;
+  /** 2D data only: the plane state it describes, which then cannot change. */
+  plane?: 'stress' | 'strain';
   source: string;
   /** What to try with it. */
   blurb: string;

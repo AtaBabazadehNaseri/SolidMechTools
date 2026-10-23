@@ -1,6 +1,9 @@
-import { type EffectiveSymmetry, PRESETS, SECTIONS, SYMMETRY_CLASSES, SYMMETRY_ELEMENTS, type SectionId, type SymmetryClassId } from '../mechanics';
-import type { Action, LabDerived, LabState, MaterialDerived } from '../app/lab';
+import { useState } from 'react';
+import { type EffectiveSymmetry, IN_PLANE, PRESETS, SECTIONS, SYMMETRY_CLASSES, SYMMETRY_ELEMENTS, type SectionId, type SymmetryClassId } from '../mechanics';
+import { type Action, type LabDerived, type LabState, type MaterialDerived, presetOf } from '../app/lab';
+import { documentOf, encodeFragment } from '../app/share';
 import { Knob } from './Knob';
+import { MaterialInput } from './MaterialInput';
 
 interface Props {
   state: LabState;
@@ -15,12 +18,16 @@ const V6 = ['11', '22', '33', '23', '13', '12'];
 export function symmetryName(s: EffectiveSymmetry): string {
   const ax = s.axis === null ? '' : ` about axis ${s.axis + 1}`;
   if (s.classId === 'hexagonal') return `transversely isotropic${ax}`;
+  if (SYMMETRY_CLASSES[s.classId].dimension === 2) return `${SYMMETRY_CLASSES[s.classId].name.replace(' (2D', ' in plane (2D').toLowerCase()}`;
   return `${SYMMETRY_CLASSES[s.classId].name.toLowerCase()}${ax}`;
 }
 
 export function MaterialPanel({ state, derived, material, dispatch }: Props) {
-  const preset = PRESETS.find((p) => p.id === state.presetId)!;
+  const preset = presetOf(state);
   const cls = derived.cls;
+  const plane = cls.dimension === 2;
+  const [entering, setEntering] = useState(false);
+  const user = state.userPreset;
   const raised = material.symmetry.classId !== cls.id;
   const groups = {
     'in-plane': cls.params.filter((d) => derived.effects[d.key] === 'in-plane'),
@@ -43,6 +50,30 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
   return (
     <section className="panel material-panel">
       <h2>Material</h2>
+      <div className="own-row">
+        <button className="primary" onClick={() => setEntering(true)} title="Paste a C or S matrix, or enter constants, in 3D or as 2D data">
+          Enter your own material…
+        </button>
+        <ShareLink state={state} />
+      </div>
+      {entering && (
+        <MaterialInput
+          onClose={() => setEntering(false)}
+          onLoad={(l) => {
+            dispatch({ type: 'loadMaterial', preset: l.preset, thetaDeg: l.thetaDeg });
+            setEntering(false);
+          }}
+        />
+      )}
+      {plane ? (
+        <div className="field">
+          <span>Elastic symmetry class</span>
+          <div className="plane-data">
+            <b>{cls.name}</b>: in-plane data for {state.mode === 'stress' ? 'plane stress' : 'plane strain'}. Out-of-plane results need 3D
+            constants and are not shown; the mode is fixed.
+          </div>
+        </div>
+      ) : (
       <label className="field">
         <span>Elastic symmetry class</span>
         <select className="class-select" value={state.classId} onChange={(e) => dispatch({ type: 'symmetryClass', classId: e.target.value as SymmetryClassId })}>
@@ -53,6 +84,7 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
           ))}
         </select>
       </label>
+      )}
       <label className="field">
         <span>Material</span>
         <select
@@ -60,6 +92,7 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
           value={state.custom ? 'custom' : state.presetId}
           onChange={(e) => dispatch(e.target.value === 'custom' ? { type: 'custom' } : { type: 'preset', id: e.target.value })}
         >
+          {user && user.classId === state.classId && <option value="user">{user.name === 'Your material' ? user.name : `Your material: ${user.name}`}</option>}
           {PRESETS.filter((p) => p.classId === state.classId).map((p) => (
             <option key={p.id} value={p.id}>
               {p.name}
@@ -83,16 +116,19 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
 
       <SymmetryBox state={state} material={material} />
 
-      <label className="field">
-        <span>Section plane</span>
-        <select value={state.section} onChange={(e) => dispatch({ type: 'section', section: e.target.value as SectionId })}>
-          {Object.values(SECTIONS).map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      {!plane && (
+        <label className="field">
+          <span>Section plane</span>
+          <select value={state.section} onChange={(e) => dispatch({ type: 'section', section: e.target.value as SectionId | 'custom' })}>
+            {Object.values(SECTIONS).map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.label}
+              </option>
+            ))}
+            {state.customR && <option value="custom">Your orientation (as entered)</option>}
+          </select>
+        </label>
+      )}
 
       <label className="field theta">
         <span>In-plane rotation θ (or drag the teal handle on the ring)</span>
@@ -144,6 +180,8 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
 
 function SymmetryBox({ state, material }: { state: LabState; material: MaterialDerived }) {
   const cls = SYMMETRY_CLASSES[state.classId];
+  // 2D data: only the in-plane block exists.
+  const idx: number[] = cls.dimension === 2 ? [...IN_PLANE] : [0, 1, 2, 3, 4, 5];
   return (
     <details className="symmetry">
       <summary>Symmetry</summary>
@@ -158,16 +196,16 @@ function SymmetryBox({ state, material }: { state: LabState; material: MaterialD
         <thead>
           <tr>
             <th />
-            {V6.map((h) => (
-              <th key={h}>{h}</th>
+            {idx.map((k) => (
+              <th key={k}>{V6[k]}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {material.pattern.map((row, i) => (
+          {idx.map((i) => (
             <tr key={i}>
               <th>{V6[i]}</th>
-              {row.map((c, j) => (
+              {idx.map((j) => material.pattern[i][j]).map((c, j) => (
                 <td key={j} className={`pc-${c.kind}`}>
                   {c.kind === 'zero' ? '·' : c.kind === 'free' ? '●' : `${c.negative ? '−' : ''}${c.group}`}
                 </td>
@@ -182,5 +220,26 @@ function SymmetryBox({ state, material }: { state: LabState; material: MaterialD
         class’s generating rotations about the material axes.
       </p>
     </details>
+  );
+}
+
+/** Copies a link that reopens the Lab with this material, its orientation, θ and mode (docs/material-format.md). */
+function ShareLink({ state }: { state: LabState }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  const copy = async () => {
+    const url = `${location.origin}${location.pathname}#${encodeFragment(documentOf(state))}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied('Link copied');
+    } catch {
+      window.prompt('Copy this link:', url);
+      setCopied(null);
+    }
+    window.setTimeout(() => setCopied(null), 2500);
+  };
+  return (
+    <button className="mini" onClick={copy} title="Copy a link that opens the Lab with this material, its orientation, θ and mode">
+      {copied ?? 'Share link'}
+    </button>
   );
 }

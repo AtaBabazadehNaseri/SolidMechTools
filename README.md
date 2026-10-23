@@ -24,6 +24,27 @@ Also in the lab:
 - snapping knobs ("= E₁", "isotropic in the 1–2 plane", "0");
 - real-material presets for all eight symmetry classes.
 
+### Your own material
+
+"Enter your own material…" loads your data in one of four forms:
+- a 6×6 C or S matrix;
+- symmetry-class constants;
+- a 3×3 C̄ or S̄ declared as plane stress or plane strain;
+- in-plane constants such as E₁, E₂, ν₁₂, G₁₂.
+
+The material axes can be oriented anywhere in the specimen axes.
+
+Pasted matrices take their units, component order (11, 22, 33, 23, 13, 12 or 11, 22, 33, 12, 13, 23) and shear convention (engineering, tensor or Mandel). Loading:
+- refuses an asymmetric or unstable matrix, and says why;
+- reports how far the matrix is from each symmetry class in your axes;
+- offers the class it matches to within rounding, so its constants become knobs.
+
+2D data drives every in-plane view; out-of-plane results stay greyed out because they need 3D constants.
+
+The "other forms" panel gives the material in any notation and units, together with all its engineering constants. "Share link" encodes the material, its orientation, θ and mode in the URL.
+
+Specification: [`docs/own-material.md`](docs/own-material.md). Data format: [`docs/material-format.md`](docs/material-format.md).
+
 ### Run
 
 ```bash
@@ -39,7 +60,8 @@ npm run build      # static site in dist/
 src/mechanics/   constitutive math only: no UI imports, unit-tested
   linalg.ts        small dense linear algebra (Cholesky, Gauss–Jordan, Jacobi)
   tensor.ts        Voigt/Mandel conventions, rotations built from R_M,ab = B_a : R B_b Rᵀ
-  materials.ts     8 symmetry classes as engineering constants, section planes, presets
+  materials.ts     8 symmetry classes as engineering constants, 4 in-plane (2D) classes,
+                   section planes, presets
   plane.ts         plane stress (S̄ = S[1,2,6]) and plane strain (C̄ = C[1,2,6]), mixed control,
                    directional moduli, coaxial directions
   principal.ts     principal values, tractions on a cut, Kelvin modes of C̄
@@ -47,8 +69,12 @@ src/mechanics/   constitutive math only: no UI imports, unit-tested
   anisotropy.ts    Voigt/Reuss, universal index A^U, E(n) extremes
   symmetry.ts      effective symmetry by invariance, matrix patterns
   snapping.ts      admissible snap targets for knobs
+  projection.ts    nearest matrix of a symmetry class (group averaging), distance to each class
+  orientation.ts   material axes from two vectors or from direction cosines
   constants.ts     apparent engineering constants, Kelvin moduli
 src/app/         state, actions, experiments, derived quantities
+  ownMaterial.ts   entered matrices and constants: units, notations, parsing, checks
+  share.ts         the material format (docs/material-format.md) and share links
 src/guides/      guided experiences: scripts over the same lab state, tested without the UI
 src/ui/          React + SVG views
 ```

@@ -19,8 +19,8 @@ interface Props {
   stress: number[];
   control: readonly Control[];
   mode: PlaneMode;
-  /** [σzz, τyz, τxz] reactions in plane strain. */
-  outStress: number[];
+  /** [σzz, τyz, τxz] reactions in plane strain; null for 2D data, which has no out-of-plane behaviour to show. */
+  outStress: number[] | null;
   pinnedStrain: number[] | null;
   magnification: number;
   R: Mat;
@@ -256,7 +256,7 @@ export function Specimen(p: Props) {
           : `Displacements ×${fmt(k, 3)}: display only`}
       </text>
 
-      {p.mode === 'strain' && (
+      {p.mode === 'strain' && p.outStress && (
         <g className="oop-badge" transform={`translate(${VIEW - 12}, ${-VIEW + 18})`}>
           <text textAnchor="end">plane strain: εzz = 0 is held by</text>
           <text textAnchor="end" y={16}>

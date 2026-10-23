@@ -3,6 +3,7 @@ import { inverse, isPositiveDefinite, isSymmetric, maxAbsDiff, scale, sub, add, 
 import {
   PRESETS,
   SYMMETRY_CLASSES,
+  type SpaceClassId,
   type SymmetryClassId,
   paramsFromCompliance,
   stiffnessFromEntries,
@@ -39,7 +40,7 @@ describe('symmetry classes', () => {
   // Each class must be invariant under its symmetry operations, and the
   // lower-symmetry classes must NOT be invariant under higher-symmetry ones.
   const r = rng(7);
-  const generators: Record<SymmetryClassId, Mat[]> = {
+  const generators: Record<SpaceClassId, Mat[]> = {
     isotropic: [randomRotation(r), randomRotation(r), randomRotation(r)],
     cubic: [rot([0, 0, 1], 90), rot([1, 0, 0], 90), rot([0, 1, 0], 90), rot([1, 1, 1], 120)],
     hexagonal: [rot([0, 0, 1], 37), rot([0, 0, 1], 60), rot([1, 0, 0], 180)],
@@ -49,7 +50,7 @@ describe('symmetry classes', () => {
     monoclinic: [rot([0, 0, 1], 180)],
     triclinic: [],
   };
-  const notInvariant: Record<SymmetryClassId, Mat[]> = {
+  const notInvariant: Record<SpaceClassId, Mat[]> = {
     isotropic: [],
     cubic: [rot([0, 0, 1], 30)],
     hexagonal: [rot([1, 0, 0], 30)],
@@ -60,7 +61,7 @@ describe('symmetry classes', () => {
     triclinic: [rot([0, 0, 1], 180)],
   };
 
-  for (const id of Object.keys(generators) as SymmetryClassId[]) {
+  for (const id of Object.keys(generators) as SpaceClassId[]) {
     it(`${id}: invariant under its symmetry operations only`, () => {
       const S = SYMMETRY_CLASSES[id].build(presetFor(id).params);
       for (const R of generators[id]) expect(invariant(S, R)).toBe(true);

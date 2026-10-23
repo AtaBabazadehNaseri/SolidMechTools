@@ -1877,3 +1877,221 @@ fieldset.plain:disabled {
   font-family: var(--mono);
   font-size: 12px;
 }
+
+/* ------------------------------------------------- bring your own material */
+
+.own-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 8px;
+}
+.plane-data {
+  font-size: 12.5px;
+  color: var(--text);
+  background: color-mix(in srgb, var(--warn) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  border-radius: 8px;
+  padding: 6px 8px;
+}
+.link-message {
+  font-size: 13px;
+  background: color-mix(in srgb, var(--warn) 10%, var(--panel));
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+  border-radius: 8px;
+  padding: 6px 10px;
+  margin: 0 0 10px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(15, 17, 20, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+.modal {
+  width: min(760px, 100%);
+  margin: auto 0;
+  font-size: 13px;
+}
+.modal-head,
+.modal-foot {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.modal-foot {
+  margin-top: 14px;
+  justify-content: flex-end;
+}
+.modal h3 {
+  margin: 14px 0 4px;
+}
+.om-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin: 8px 0;
+}
+.om-row .hint {
+  margin: 0;
+}
+.om-label {
+  color: var(--muted);
+  font-size: 12px;
+}
+.om-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0 12px;
+}
+.om-grid input,
+.om-grid select {
+  width: 100%;
+  color: var(--text);
+}
+.om-fixed {
+  color: var(--text);
+  font-family: var(--mono);
+  padding: 4px 0;
+}
+.om-text {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  resize: vertical;
+}
+.om-constants {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 6px 12px;
+  margin: 8px 0;
+}
+.om-const {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 6px;
+}
+.om-const input {
+  width: 100%;
+  min-width: 0;
+}
+.om-vectors {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0;
+}
+.vec-row {
+  display: grid;
+  grid-template-columns: 120px repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+.vec-row input {
+  min-width: 0;
+}
+.om-check {
+  margin-top: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg);
+}
+.om-check p {
+  margin: 4px 0;
+}
+.om-error {
+  color: var(--reaction);
+}
+.om-warn {
+  color: var(--warn);
+}
+.om-ok {
+  color: var(--material);
+}
+.om-fits-title {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 6px;
+}
+.om-fits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 2px 12px;
+  margin: 4px 0;
+}
+.om-fit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+}
+.om-fit.on {
+  font-weight: 600;
+}
+.om-tag {
+  font-size: 10.5px;
+  color: var(--material);
+  border: 1px solid color-mix(in srgb, var(--material) 50%, transparent);
+  border-radius: 999px;
+  padding: 0 6px;
+}
+.other-forms .of-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0 12px;
+}
+.other-forms .grid6-title .mini {
+  margin-left: 6px;
+}
+.of-constants {
+  margin: 6px 0;
+}
+@media (max-width: 520px) {
+  .vec-row {
+    grid-template-columns: 1fr 1fr 1fr;
+  }
+  .vec-row > span {
+    grid-column: 1 / -1;
+  }
+}
+.other-forms .grid6-row {
+  grid-template-columns: repeat(auto-fit, minmax(300px, max-content));
+}
+.other-forms .grid6 table {
+  width: auto;
+}
+.other-forms .grid6 td {
+  min-width: 62px;
+}
+.of-constants {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 190px));
+  gap: 4px 18px;
+  margin: 6px 0;
+}
+.of-constants .const {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 13px;
+}
+.oop-note {
+  margin: 4px 0 8px;
+}

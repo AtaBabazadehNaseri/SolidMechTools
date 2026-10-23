@@ -32,7 +32,11 @@ export function snapTargets(cls: SymmetryClassDef, params: Params): Record<strin
   const G = (k: number) => 1 / S[k][k];
   const nu = (i: number, j: number) => -S[j][i] / S[i][i];
   const same = (a: number, b: number) => Math.abs(a - b) <= 1e-9 * Math.max(Math.abs(a), Math.abs(b), 1e-300);
-  const isoLabel = (a: number, b: number) => (cls.id === 'cubic' ? 'isotropic' : `isotropic in the ${a + 1}–${b + 1} plane`);
+  // 2D data has no axis 3: its placeholder out-of-plane entries must not become snap targets.
+  const plane = cls.dimension === 2;
+  const nAxes = plane ? 2 : 3;
+  const isotropicClass = cls.id === 'isotropic' || cls.id === 'plane-isotropic';
+  const isoLabel = (a: number, b: number) => (cls.id === 'cubic' || plane ? 'isotropic' : `isotropic in the ${a + 1}–${b + 1} plane`);
 
   const out: Record<string, KnobSnaps> = {};
   for (const d of cls.params) {
@@ -41,22 +45,22 @@ export function snapTargets(cls: SymmetryClassDef, params: Params): Record<strin
     let m: RegExpMatchArray | null;
     if ((m = d.key.match(/^E(\d)$/))) {
       const i = Number(m[1]) - 1;
-      for (let j = 0; j < 3; j++) if (j !== i && !same(E[j], v)) list.push({ value: E[j], label: `= E${SUB[j]}` });
+      for (let j = 0; j < nAxes; j++) if (j !== i && !same(E[j], v)) list.push({ value: E[j], label: `= E${SUB[j]}` });
     } else if ((m = d.key.match(/^G(\d\d)$/))) {
       const [k, a, b] = SHEAR_PLANE[m[1]];
-      for (const p of Object.keys(SHEAR_PLANE)) {
+      for (const p of plane ? [] : Object.keys(SHEAR_PLANE)) {
         const kk = SHEAR_PLANE[p][0];
         if (kk !== k && !same(G(kk), v)) list.push({ value: G(kk), label: `= G${shearSub(p)}` });
       }
-      if (cls.id !== 'isotropic' && same(E[a], E[b])) list.push({ value: E[a] / (2 * (1 + nu(a, b))), label: isoLabel(a, b) });
+      if (!isotropicClass && same(E[a], E[b])) list.push({ value: E[a] / (2 * (1 + nu(a, b))), label: isoLabel(a, b) });
     } else if ((m = d.key.match(/^nu(\d)(\d)$/))) {
       const i = Number(m[1]) - 1;
       const j = Number(m[2]) - 1;
       list.push({ value: 0, label: '0' });
-      for (const [p, q] of [[0, 1], [0, 2], [1, 2]])
+      for (const [p, q] of plane ? [] : [[0, 1], [0, 2], [1, 2]])
         if ((p !== i || q !== j) && !same(nu(p, q), v)) list.push({ value: nu(p, q), label: `= ν${SUB[p]}${SUB[q]}` });
       const k = i + j === 1 ? 5 : i + j === 2 ? 4 : 3;
-      if (cls.id !== 'isotropic' && same(E[i], E[j])) list.push({ value: E[i] / (2 * G(k)) - 1, label: isoLabel(i, j) });
+      if (!isotropicClass && same(E[i], E[j])) list.push({ value: E[i] / (2 * G(k)) - 1, label: isoLabel(i, j) });
     } else {
       list.push({ value: 0, label: '0 (no coupling)' });
     }

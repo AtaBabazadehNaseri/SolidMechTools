@@ -17,6 +17,8 @@ const OOP_STRAIN = ['\\varepsilon_{zz}', '\\gamma_{yz}', '\\gamma_{xz}'];
 export function Readouts({ state, derived, dispatch, ladder = true }: Props) {
   const { response, out, energy, constants: k } = derived;
   const pin = state.pinned;
+  // 2D data: the out-of-plane block is a placeholder and is never shown.
+  const plane = derived.cls.dimension === 2;
   const isPS = state.mode === 'stress';
   const sTol = 1e-9 * Math.max(...response.stress.map(Math.abs), ...out.stress.map(Math.abs), 1e-300);
   const eTol = 1e-9 * Math.max(...response.strain.map(Math.abs), ...out.strain.map(Math.abs), 1e-300);
@@ -55,7 +57,7 @@ export function Readouts({ state, derived, dispatch, ladder = true }: Props) {
               </tr>
             );
           })}
-          {[0, 1, 2].map((a) => (
+          {!plane && [0, 1, 2].map((a) => (
             <tr key={a} className="oop">
               <th>
                 <Tex>{OOP_STRESS[a]}</Tex> / <Tex>{OOP_STRAIN[a]}</Tex>
@@ -74,14 +76,16 @@ export function Readouts({ state, derived, dispatch, ladder = true }: Props) {
           ))}
         </tbody>
       </table>
+      {plane && <p className="hint oop-note">Out-of-plane components are not available for 2D data: they need the out-of-plane constants.</p>}
       <div className="energy">
         Strain energy density <Tex>{'W = \\tfrac12\\,\\boldsymbol{\\sigma}\\cdot\\boldsymbol{\\varepsilon}'}</Tex> = <b>{fmt(energy * 1000, 4)}</b> kJ/m³
       </div>
 
-      <FullTensors state={state} derived={derived} />
+      {!plane && <FullTensors state={state} derived={derived} />}
 
       {ladder && <ConstraintLadder state={state} derived={derived} dispatch={dispatch} />}
 
+      {!plane && (
       <details className="constants-box">
         <summary>3D engineering constants read in specimen axes</summary>
         <div className="constants">
@@ -101,6 +105,7 @@ export function Readouts({ state, derived, dispatch, ladder = true }: Props) {
           and do not depend on the 2D mode.
         </p>
       </details>
+      )}
     </section>
   );
 }

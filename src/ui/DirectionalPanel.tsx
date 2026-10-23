@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { type Mat, directionalModuli } from '../mechanics';
+import { type Mat, SYMMETRY_CLASSES, directionalModuli } from '../mechanics';
 import { type Action, type LabDerived, type LabState, type MaterialDerived, SWEEP_QUANTITIES, type SweepQuantity, rotationSweep } from '../app/lab';
 import { fmt, toGPa } from '../app/format';
 import { Tex } from './Tex';
@@ -20,7 +20,9 @@ export function DirectionalPanel({ state, derived, material, dispatch, sweep = t
   const [view, setView] = useState<PolarView>('E');
   const { S2, C2, R, coaxial, planeExt } = derived;
   const S = material.S6mat;
-  const axisE = [0, 1, 2].map((i) => 1 / S[i][i]);
+  // 2D data has only axes 1 and 2; its axis-3 entries are a placeholder.
+  const plane = material.dimension === 2;
+  const axisE = (plane ? [0, 1] : [0, 1, 2]).map((i) => 1 / S[i][i]);
   const iMax = axisE.indexOf(Math.max(...axisE));
   const iMin = axisE.indexOf(Math.min(...axisE));
   const equalE12 = Math.abs(axisE[0] - axisE[1]) <= 1e-9 * axisE[0];
@@ -53,7 +55,7 @@ export function DirectionalPanel({ state, derived, material, dispatch, sweep = t
             <th>Axis moduli</th>
             <td>
               {iMax === iMin || Math.abs(axisE[iMax] - axisE[iMin]) <= 1e-9 * axisE[iMax] ? (
-                <Tex>{'E_1 = E_2 = E_3'}</Tex>
+                <Tex>{plane ? 'E_1 = E_2' : 'E_1 = E_2 = E_3'}</Tex>
               ) : (
                 <>
                   <Tex>{`E_${iMax + 1}/E_${iMin + 1} =`}</Tex> {fmt(axisE[iMax] / axisE[iMin], 4)}
@@ -90,6 +92,8 @@ export function DirectionalPanel({ state, derived, material, dispatch, sweep = t
             </th>
             <td>{fmt(planeExt.Gmax / planeExt.Gmin, 4)}</td>
           </tr>
+          {!plane && (
+          <>
           <tr>
             <th>
               3D, <Tex>{'E_{\\max}/E_{\\min}'}</Tex>
@@ -109,6 +113,8 @@ export function DirectionalPanel({ state, derived, material, dispatch, sweep = t
               {fmt(material.universal, 4, 1e-10)} <span className="muted">(0 only for isotropy)</span>
             </td>
           </tr>
+          </>
+          )}
         </tbody>
       </table>
       <details className="notes">
@@ -289,12 +295,13 @@ export function RotationSweep({
   /** Always open, as a panel of its own. */
   panel?: boolean;
 }) {
-  const [q, setQ] = useState<SweepQuantity>(initial);
+  const [chosenQ, setQ] = useState<SweepQuantity>(initial);
+  const q: SweepQuantity = chosenQ === 'zz' && SYMMETRY_CLASSES[state.classId].dimension === 2 ? 'gxy' : chosenQ;
   const [hover, setHover] = useState<number | null>(null);
   const data = useMemo(
     () => rotationSweep(state, q),
     // θ itself is swept, so it is deliberately not a dependency.
-    [state.classId, state.params, state.section, state.mode, state.load, q],
+    [state.classId, state.params, state.section, state.customR, state.mode, state.load, q],
   );
   const meta = SWEEP_QUANTITIES.find((x) => x.id === q)!;
   // A component the boundary conditions prescribe cannot change with θ.
@@ -336,7 +343,8 @@ export function RotationSweep({
     <>
       <div className="sweep-head">
         <select value={q} onChange={(e) => setQ(e.target.value as SweepQuantity)} aria-label="Quantity to sweep">
-          {SWEEP_QUANTITIES.map((x) => (
+          {/* 2D data has no out-of-plane quantity to sweep. */}
+          {SWEEP_QUANTITIES.filter((x) => !(x.id === 'zz' && SYMMETRY_CLASSES[state.classId].dimension === 2)).map((x) => (
             <option key={x.id} value={x.id}>
               {x.label}
             </option>

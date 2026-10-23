@@ -12,6 +12,7 @@ import {
   type KnobSnaps,
   type LoadCase,
   type Mat,
+  type MaterialPreset,
   type OutOfPlane,
   type PatternCell,
   type PlaneMode,
@@ -24,12 +25,14 @@ import {
   IN_PLANE,
   OUT_OF_PLANE,
   PRESETS,
+  SECTIONS,
   SYMMETRY_CLASSES,
   apparentConstants,
   planeConstants,
   apparentStiffness,
   coaxialDirections,
   compliancePattern,
+  effectivePlaneSymmetry,
   effectiveSymmetry,
   inverse,
   kelvinModes2D,
@@ -45,7 +48,7 @@ import {
   scale,
   snapTargets,
   solveMixed,
-  specimenRotation,
+  specimenRotationFrom,
   strainEnergyDensity,
   strainPrincipal,
   stressPrincipal,
@@ -91,7 +94,12 @@ export interface LabState {
   classId: SymmetryClassId;
   params: Params;
   tracks: Record<string, Track>;
-  section: SectionId;
+  /** Section plane preset, or 'custom' to use `customR`. */
+  section: SectionId | 'custom';
+  /** Material → specimen rotation entered by the user (columns: axes 1, 2, 3 in x, y, z). */
+  customR: Mat | null;
+  /** A material entered by the user; `presetId` is 'user' while it is the starting point. */
+  userPreset: MaterialPreset | null;
   thetaDeg: number;
   mode: PlaneMode;
   load: LoadCase;
@@ -159,13 +167,34 @@ export function tracksFor(classId: SymmetryClassId, params: Params): Record<stri
   return Object.fromEntries(cls.params.map((d) => [d.key, trackFor(cls, params, d.key)]));
 }
 
+/** The example (or the user's own material) the current constants started from. */
+export function presetOf(s: Pick<LabState, 'presetId' | 'userPreset'>): MaterialPreset {
+  if (s.presetId === 'user' && s.userPreset) return s.userPreset;
+  return PRESETS.find((p) => p.id === s.presetId) ?? PRESETS[0];
+}
+
+/** Material → specimen rotation before the in-plane rotation θ. */
+export function baseRotation(s: Pick<LabState, 'section' | 'customR'>): Mat {
+  return s.section === 'custom' && s.customR ? s.customR : SECTIONS[s.section === 'custom' ? 'n3' : s.section].R;
+}
+
+/** 2D data: in-plane constants only, with the plane state fixed. */
+export const isPlaneData = (s: Pick<LabState, 'classId'>) => SYMMETRY_CLASSES[s.classId].dimension === 2;
+
 const DEFAULT_OVERLAYS: Overlays = { materialAxes: true, materialLines: true, principalStress: false, principalStrain: false, cut: false };
 
 export function initialState(presetId: string, keep?: Partial<LabState>): LabState {
-  const preset = PRESETS.find((p) => p.id === presetId) ?? PRESETS[0];
+  return initialStateFrom(PRESETS.find((p) => p.id === presetId) ?? PRESETS[0], keep);
+}
+
+/** A fresh lab state for any material, including one entered by the user (id 'user'). */
+export function initialStateFrom(preset: MaterialPreset, keep?: Partial<LabState>): LabState {
   const cls = SYMMETRY_CLASSES[preset.classId];
-  const mode = keep?.mode ?? 'stress';
-  const S2 = planeCompliance(rotateComplianceVoigt(cls.build(preset.params), specimenRotation(preset.section, 0)), mode);
+  // 2D data describes one plane state only.
+  const mode = preset.plane ?? keep?.mode ?? 'stress';
+  const customR = preset.section === 'custom' ? (preset.orientation ?? null) : (keep?.customR ?? null);
+  const R0 = baseRotation({ section: preset.section, customR });
+  const S2 = planeCompliance(rotateComplianceVoigt(cls.build(preset.params), specimenRotationFrom(R0, 0)), mode);
   const scales = { stress: niceRound(1e-3 / S2[0][0]), strain: 1e-3 };
   const load = loadCaseFor(EXPERIMENTS[0], scales);
   const { strain } = solveMixed(S2, load);
@@ -176,6 +205,8 @@ export function initialState(presetId: string, keep?: Partial<LabState>): LabSta
     params: { ...preset.params },
     tracks: tracksFor(preset.classId, preset.params),
     section: preset.section,
+    customR,
+    userPreset: preset.id === 'user' ? preset : (keep?.userPreset ?? null),
     thetaDeg: 0,
     mode,
     load,
@@ -200,7 +231,9 @@ export type Action =
   /** Boundary conditions only: uniaxial stress. */
   | { type: 'resetLoad' }
   | { type: 'param'; key: string; value: number }
-  | { type: 'section'; section: SectionId }
+  | { type: 'section'; section: SectionId | 'custom' }
+  /** Start from a material entered by the user (it becomes the 'user' preset). */
+  | { type: 'loadMaterial'; preset: MaterialPreset; thetaDeg?: number }
   | { type: 'theta'; deg: number }
   | { type: 'mode'; mode: PlaneMode }
   | { type: 'control'; i: number; control: Control }
@@ -217,28 +250,35 @@ export type Action =
   | { type: 'replace'; state: LabState };
 
 export function reducer(state: LabState, a: Action): LabState {
-  const keep = { mode: state.mode, overlays: state.overlays, cutDeg: state.cutDeg, mohr: state.mohr };
+  // The user's material and orientation survive switching to an example and back.
+  const keep = { mode: state.mode, overlays: state.overlays, cutDeg: state.cutDeg, mohr: state.mohr, userPreset: state.userPreset, customR: state.customR };
   switch (a.type) {
     case 'preset':
-      return initialState(a.id, keep);
+      return a.id === 'user' && state.userPreset ? initialStateFrom(state.userPreset, keep) : initialState(a.id, keep);
+    case 'loadMaterial':
+      return { ...initialStateFrom(a.preset, { ...keep, userPreset: a.preset }), thetaDeg: a.thetaDeg ?? 0 };
     case 'symmetryClass':
       // A new class starts from its first example.
       return a.classId === state.classId ? state : initialState(PRESETS.find((p) => p.classId === a.classId)!.id, keep);
     case 'custom':
       return { ...state, custom: true };
     case 'reset':
-      return initialState(state.presetId, keep);
+      return initialStateFrom(presetOf(state), keep);
     case 'resetParams':
-      return { ...state, custom: false, params: { ...PRESETS.find((p) => p.id === state.presetId)!.params } };
+      return { ...state, custom: false, params: { ...presetOf(state).params } };
     case 'resetLoad':
       return { ...state, load: loadCaseFor(EXPERIMENTS[0], state.scales) };
     case 'param':
       return { ...state, custom: true, params: { ...state.params, [a.key]: a.value } };
     case 'section':
+      // 2D data has no other section; 'custom' needs an entered orientation.
+      if (isPlaneData(state) || (a.section === 'custom' && !state.customR)) return state;
       return { ...state, section: a.section };
     case 'theta':
       return { ...state, thetaDeg: a.deg };
     case 'mode':
+      // 2D data describes one plane state; the other one needs the out-of-plane constants.
+      if (isPlaneData(state)) return state;
       return { ...state, mode: a.mode, pinned: null };
     case 'control': {
       // Switching a component's control starts from zero: traction-free or locked.
@@ -296,6 +336,8 @@ export function kelvinLoad(mode: KelvinMode, scales: LabState['scales']): LoadCa
 // Material-only quantities (independent of section, rotation and loading).
 
 export interface MaterialDerived {
+  /** 2 for in-plane data: the 3D quantities below are then computed from a placeholder and must not be shown. */
+  dimension: 2 | 3;
   S6mat: Mat;
   symmetry: EffectiveSymmetry;
   pattern: PatternCell[][];
@@ -309,8 +351,9 @@ export function deriveMaterial(classId: SymmetryClassId, params: Params): Materi
   const S6mat = cls.build(params);
   const y = youngExtremes3D(S6mat);
   return {
+    dimension: cls.dimension,
     S6mat,
-    symmetry: effectiveSymmetry(S6mat),
+    symmetry: cls.dimension === 2 ? { classId: effectivePlaneSymmetry(S6mat), axis: null } : effectiveSymmetry(S6mat),
     pattern: compliancePattern(cls, params),
     universal: universalAnisotropy(S6mat),
     young3D: { min: y.min, max: y.max },
@@ -350,7 +393,7 @@ export interface LabDerived {
 
 export function deriveLab(s: LabState): LabDerived {
   const cls = SYMMETRY_CLASSES[s.classId];
-  const R = specimenRotation(s.section, (s.thetaDeg * Math.PI) / 180);
+  const R = specimenRotationFrom(baseRotation(s), (s.thetaDeg * Math.PI) / 180);
   const S6 = rotateComplianceVoigt(cls.build(s.params), R);
   const C6 = inverse(S6);
   const S2 = planeCompliance(S6, s.mode);
@@ -406,7 +449,7 @@ export function experimentName(s: LabState): string | null {
 }
 
 export function snapshotOf(s: LabState, d: LabDerived): Snapshot {
-  const preset = PRESETS.find((p) => p.id === s.presetId)!;
+  const preset = presetOf(s);
   const material = s.custom ? `custom (from ${preset.name})` : preset.name;
   const mode = s.mode === 'stress' ? 'plane stress' : 'plane strain';
   return {
@@ -461,7 +504,7 @@ export const SWEEP_QUANTITIES: Array<{ id: SweepQuantity; label: string; unit: s
 /** Value of one quantity, in display units, for the state's material rotated to θ (degrees). */
 export function sweepValue(s: LabState, q: SweepQuantity, thetaDeg: number): number {
   const cls = SYMMETRY_CLASSES[s.classId];
-  const S6 = rotateComplianceVoigt(cls.build(s.params), specimenRotation(s.section, (thetaDeg * Math.PI) / 180));
+  const S6 = rotateComplianceVoigt(cls.build(s.params), specimenRotationFrom(baseRotation(s), (thetaDeg * Math.PI) / 180));
   const S2 = planeCompliance(S6, s.mode);
   const r = solveMixed(S2, s.load);
   switch (q) {
@@ -541,18 +584,27 @@ export function numericalChecks(s: LabState, d: LabDerived): NumericalCheck[] {
     s.mode === 'stress'
       ? Math.max(Math.abs(sig6[2]), Math.abs(sig6[3]), Math.abs(sig6[4])) / sScale
       : Math.max(...[2, 3, 4].map((k, a) => Math.abs(sig6[k] - d.out.stress[a]))) / sScale;
-  const minKelvin = Math.min(...kelvinModuli(d.S6));
-  return [
-    { name: 'Positive definiteness', value: minKelvin / 1000, limit: 0, detail: 'Smallest Kelvin modulus of the 3D stiffness (GPa); must be > 0.' },
+  const plane = d.cls.dimension === 2;
+  const minKelvin = plane ? Math.min(...d.kelvin2D.map((m) => m.modulus)) : Math.min(...kelvinModuli(d.S6));
+  const checks: NumericalCheck[] = [
+    {
+      name: 'Positive definiteness',
+      value: minKelvin / 1000,
+      limit: 0,
+      detail: plane ? 'Smallest Kelvin modulus of the 2D stiffness C̄ (GPa); must be > 0.' : 'Smallest Kelvin modulus of the 3D stiffness (GPa); must be > 0.',
+    },
     { name: 'Symmetry of C̄', value: sym, limit: 1e-12, detail: 'max |C̄ − C̄ᵀ| / max |C̄|' },
     { name: 'C̄ S̄ = I', value: inv, limit: 1e-10, detail: 'max |C̄ S̄ − I|' },
     { name: 'σ = C̄ ε', value: constitutive, limit: 1e-10, detail: 'Constitutive residual of the solved state, relative to max |σ|.' },
     { name: 'Prescribed values met', value: prescribed, limit: 1e-12, detail: 'Largest mismatch of a prescribed stress or strain, relative to its reference value.' },
-    {
+  ];
+  // 2D data has no out-of-plane behaviour to check.
+  if (!plane)
+    checks.push({
       name: s.mode === 'stress' ? 'Out-of-plane stresses vanish' : 'Out-of-plane reactions consistent',
       value: outResidual,
       limit: 1e-10,
       detail: s.mode === 'stress' ? '3D C applied to the full strain gives σzz = τyz = τxz = 0.' : '3D C applied to the full strain reproduces the reported reactions.',
-    },
-  ];
+    });
+  return checks;
 }

@@ -12,6 +12,8 @@ interface Props {
   activeCols: boolean[];
   selected: Selection | null;
   onSelect: (s: Selection) => void;
+  /** 2D data: there is no 3D matrix the entries could be a block of. */
+  planeData?: boolean;
 }
 
 export const toDisplay = (id: MatrixId, v: number) => (id === 'C' ? toGPa(v) : toPerTPa(v));
@@ -19,7 +21,7 @@ export const toDisplay = (id: MatrixId, v: number) => (id === 'C' ? toGPa(v) : t
 /** Whether this 2D matrix is the 3D block (true) or the inverse of the other one's block ("reduced"). */
 export const isBlock = (id: MatrixId, mode: PlaneMode) => (id === 'S') === (mode === 'stress');
 
-export function MatrixGrid({ id, mode, M, pinned, activeCols, selected, onSelect }: Props) {
+export function MatrixGrid({ id, mode, M, pinned, activeCols, selected, onSelect, planeData = false }: Props) {
   const D = M.map((row) => row.map((v) => toDisplay(id, v)));
   const P = pinned?.map((row) => row.map((v) => toDisplay(id, v)));
   const maxAbs = Math.max(...D.flat().map(Math.abs));
@@ -34,9 +36,11 @@ export function MatrixGrid({ id, mode, M, pinned, activeCols, selected, onSelect
       <div className="matrix-title">
         <Tex>{id === 'C' ? '\\boldsymbol{\\sigma} = \\bar{\\mathbf{C}}\\,\\boldsymbol{\\varepsilon}' : '\\boldsymbol{\\varepsilon} = \\bar{\\mathbf{S}}\\,\\boldsymbol{\\sigma}'}</Tex>
         <span className="matrix-sub">{id === 'C' ? 'stiffness · GPa' : 'compliance · TPa⁻¹'}</span>
+        {!planeData && (
         <span className={block ? 'origin block' : 'origin reduced'} title={block ? `Entries equal the 3D ${id} entries` : `Inverse of the in-plane block of the 3D ${other}; not the in-plane block of the 3D ${id}`}>
           {block ? `= 3D ${id} entries` : `reduced = ${other}̄⁻¹`}
         </span>
+        )}
       </div>
       <table>
         <thead>

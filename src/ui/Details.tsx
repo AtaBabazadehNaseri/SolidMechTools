@@ -2,6 +2,7 @@ import { IN_PLANE, type Mat, type PlaneMode, PRESETS, submatrix } from '../mecha
 import { type LabDerived, type LabState, type MaterialDerived, numericalChecks } from '../app/lab';
 import { fmt, toGPa, toPerTPa } from '../app/format';
 import { Tex } from './Tex';
+import { OtherForms } from './OtherForms';
 
 const V6 = ['11', '22', '33', '23', '13', '12'];
 
@@ -43,8 +44,18 @@ export function Details({ state, derived, material, mode }: { state: LabState; d
   const ps = mode === 'stress';
   const Cblock = submatrix(C6, IN_PLANE, IN_PLANE);
   const Sblock = submatrix(S6, IN_PLANE, IN_PLANE);
+  const plane = derived.cls.dimension === 2;
   return (
     <section className="panel details">
+      {plane ? (
+        <details open>
+          <summary>3D matrices</summary>
+          <p className="hint">
+            This material was entered as 2D data, which fixes only its in-plane behaviour. The 3D matrices, the out-of-plane response
+            and the 3D Kelvin moduli need the out-of-plane constants; enter the material in 3D to see them.
+          </p>
+        </details>
+      ) : (
       <details open>
         <summary>3D matrices in specimen axes</summary>
         <div className="grid6-row">
@@ -71,6 +82,12 @@ export function Details({ state, derived, material, mode }: { state: LabState; d
           describe the material itself, not its coordinate frame: rotate θ or change the section and every matrix entry moves, but
           these stay the same.
         </div>
+      </details>
+      )}
+
+      <details>
+        <summary>This material in other forms: matrices in any notation and units, and all its engineering constants</summary>
+        <OtherForms state={state} derived={derived} />
       </details>
 
       <details>
@@ -130,6 +147,11 @@ export function Details({ state, derived, material, mode }: { state: LabState; d
       <details>
         <summary>Material data sources</summary>
         <ul className="assumptions">
+          {state.userPreset && (
+            <li>
+              <b>{state.userPreset.name}</b> (yours): {state.userPreset.source}
+            </li>
+          )}
           {PRESETS.map((p) => (
             <li key={p.id}>
               <b>{p.name}</b>

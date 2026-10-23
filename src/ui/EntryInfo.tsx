@@ -10,6 +10,8 @@ interface Props {
   S2: Mat;
   C2: Mat;
   onRun: () => void;
+  /** 2D data: no 3D matrix lies behind the entries. */
+  planeData?: boolean;
 }
 
 const CATEGORY_NAME = {
@@ -42,7 +44,7 @@ const OUT_COND = {
   strain: 'the out-of-plane strains are zero (plane strain)',
 };
 
-export function EntryInfo({ selection, mode, S2, C2, onRun }: Props) {
+export function EntryInfo({ selection, mode, S2, C2, onRun, planeData = false }: Props) {
   if (!selection) {
     return (
       <div className="entry-info empty">
@@ -90,7 +92,7 @@ export function EntryInfo({ selection, mode, S2, C2, onRun }: Props) {
         </p>
       )}
 
-      <p className="entry-meaning">{meaning(selection, mode, S2, C2)}</p>
+      <p className="entry-meaning">{meaning(selection, mode, S2, C2, planeData)}</p>
 
       <details className="entry-cofactor">
         <summary>
@@ -111,11 +113,13 @@ export function EntryInfo({ selection, mode, S2, C2, onRun }: Props) {
   );
 }
 
-function meaning({ matrix, i, j }: Selection, mode: PlaneMode, S2: Mat, C2: Mat): string {
+function meaning({ matrix, i, j }: Selection, mode: PlaneMode, S2: Mat, C2: Mat, planeData: boolean): string {
   const cat = entryCategory(i, j);
   const lo = Math.min(i, j);
   const hi = Math.max(i, j);
-  const origin = isBlock(matrix, mode)
+  const origin = planeData
+    ? `This material was entered as 2D ${mode === 'stress' ? 'plane-stress' : 'plane-strain'} data: C̄ and S̄ are inverses of each other, with no 3D matrix behind them.`
+    : isBlock(matrix, mode)
     ? `In ${mode === 'stress' ? 'plane stress' : 'plane strain'} this entry equals the corresponding 3D ${matrix} entry.`
     : `In ${mode === 'stress' ? 'plane stress' : 'plane strain'} this matrix is reduced: it is the inverse of the other matrix, not a block of the 3D ${matrix}.`;
   if (matrix === 'S') {

@@ -52,6 +52,10 @@ export const SYMMETRY_ELEMENTS: Record<SymmetryClassId, string[]> = {
   orthotropic: ['2-fold axes (equivalently mirror planes) along 1, 2 and 3'],
   monoclinic: ['A single 2-fold axis (equivalently mirror plane) along 3'],
   triclinic: ['None beyond inversion, which every elastic tensor has'],
+  'plane-isotropic': ['Rotation by any angle about the plane normal (in 2D, a 3-fold axis already implies this)'],
+  'plane-square': ['4-fold rotation axis normal to the plane', 'Mirror lines along 1 and 2'],
+  'plane-orthotropic': ['Mirror lines along 1 and 2'],
+  'plane-anisotropic': ['None beyond the 2-fold axis normal to the plane, which every 2D elastic tensor has'],
 };
 
 export type PatternCell = { kind: 'zero' } | { kind: 'free' } | { kind: 'tied'; group: string; negative: boolean };

@@ -8,6 +8,8 @@ export * from './constants';
 export * from './anisotropy';
 export * from './symmetry';
 export * from './snapping';
+export * from './projection';
+export * from './orientation';
 
 import { type Mat, matMul } from './linalg';
 import { type SectionId, SECTIONS } from './materials';
@@ -19,4 +21,9 @@ import { rotationZ } from './tensor';
  */
 export function specimenRotation(section: SectionId, thetaRad: number): Mat {
   return matMul(rotationZ(thetaRad), SECTIONS[section].R);
+}
+
+/** The same, from any material → specimen rotation R0 (columns: axes 1, 2, 3 in x, y, z). */
+export function specimenRotationFrom(R0: Mat, thetaRad: number): Mat {
+  return matMul(rotationZ(thetaRad), R0);
 }

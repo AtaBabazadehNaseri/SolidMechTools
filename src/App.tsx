@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useReducer, useState } from 'react';
 import type { PlaneMode } from './mechanics';
-import { type Overlays, type Selection, deriveLab, deriveMaterial, entryExperiment, initialState, reducer, snapshotOf } from './app/lab';
+import { type LabState, type Overlays, type Selection, deriveLab, deriveMaterial, entryExperiment, initialState, reducer, snapshotOf } from './app/lab';
+import { decodeFragment } from './app/share';
 import { GUIDES, type PanelId } from './guides';
 import { entryState } from './guides/runner';
 import { Specimen, SpecimenLegend } from './ui/Specimen';
@@ -59,11 +60,25 @@ function saveCompleted(s: Set<string>) {
   }
 }
 
+/** A material carried by the URL (a share link), or the default example. */
+function startState(): { state: LabState; message: string | null } {
+  const fallback = initialState('iso-steel');
+  const read = typeof location === 'undefined' ? null : decodeFragment(location.hash);
+  if (!read) return { state: fallback, message: null };
+  if ('error' in read) return { state: fallback, message: `The link could not be opened: ${read.error}` };
+  const state = { ...reducer(fallback, { type: 'loadMaterial', preset: read.loadable.preset, thetaDeg: read.loadable.thetaDeg }), mode: read.mode };
+  return { state, message: read.notes.length ? read.notes.join(' ') : null };
+}
+
 export default function App() {
-  const [state, dispatch] = useReducer(reducer, 'iso-steel', (id: string) => initialState(id));
+  const [start] = useState(startState);
+  const [state, dispatch] = useReducer(reducer, start.state);
+  const [linkMessage, setLinkMessage] = useState(start.message);
   const derived = useMemo(() => deriveLab(state), [state]);
   const material = useMemo(() => deriveMaterial(state.classId, state.params), [state.classId, state.params]);
   const { response, S2, C2 } = derived;
+  // 2D data: one plane state, no out-of-plane behaviour.
+  const planeData = derived.cls.dimension === 2;
 
   const [view, setView] = useState<'lab' | 'guides'>('lab');
   const [run, setRun] = useState<GuideRun | null>(null);
@@ -139,10 +154,10 @@ export default function App() {
                 <button
                   key={m.id}
                   className={state.mode === m.id ? 'on' : ''}
-                  disabled={m.id === '3d'}
+                  disabled={m.id === '3d' || (planeData && m.id !== state.mode)}
                   aria-pressed={state.mode === m.id}
                   onClick={() => m.id !== '3d' && dispatch({ type: 'mode', mode: m.id })}
-                  title={MODE_TIPS[m.id]}
+                  title={planeData && m.id !== '3d' && m.id !== state.mode ? 'This material was entered as 2D data for the other plane state; this one needs its out-of-plane constants.' : MODE_TIPS[m.id]}
                 >
                   {m.label}
                 </button>
@@ -183,6 +198,14 @@ export default function App() {
           </>
         )}
       </header>
+      {linkMessage && (
+        <p className="link-message" role="status">
+          {linkMessage}{' '}
+          <button className="mini" onClick={() => setLinkMessage(null)}>
+            Dismiss
+          </button>
+        </p>
+      )}
       <p className="small-screen-note">This lab is built for a laptop or desktop screen. It works here, but it is much easier to use on a larger display.</p>
 
       {view === 'guides' && !inGuide ? (
@@ -230,6 +253,7 @@ export default function App() {
                   activeCols={response.strain.map((v) => nonzero(v, eRef))}
                   selected={state.selected}
                   onSelect={select}
+                  planeData={planeData}
                 />
                 <MatrixGrid
                   id="S"
@@ -239,6 +263,7 @@ export default function App() {
                   activeCols={response.stress.map((v) => nonzero(v, sRef))}
                   selected={state.selected}
                   onSelect={select}
+                  planeData={planeData}
                 />
               </div>
               <PlaneConstantsStrip c={derived.plane} mode={state.mode} />
@@ -250,6 +275,7 @@ export default function App() {
                   S2={S2}
                   C2={C2}
                   onRun={() => state.selected && dispatch({ type: 'loadCase', load: entryExperiment(state.selected, state.scales) })}
+                  planeData={planeData}
                 />
                 <MatrixLegend />
               </div>
@@ -274,12 +300,12 @@ export default function App() {
                 stress={response.stress}
                 control={state.load.control}
                 mode={state.mode}
-                outStress={derived.out.stress}
+                outStress={planeData ? null : derived.out.stress}
                 pinnedStrain={state.pinned?.response.strain ?? null}
                 magnification={state.magnification}
                 R={derived.R}
                 // An isotropic material has no preferred direction to draw lines along.
-                overlays={{ ...state.overlays, materialLines: state.overlays.materialLines && state.classId !== 'isotropic' }}
+                overlays={{ ...state.overlays, materialLines: state.overlays.materialLines && state.classId !== 'isotropic' && state.classId !== 'plane-isotropic' }}
                 principal={derived.principal}
                 thetaDeg={state.thetaDeg}
                 onTheta={(deg) => thetaUnlocked && dispatch({ type: 'theta', deg })}
@@ -287,7 +313,7 @@ export default function App() {
                 onCut={(deg) => cutUnlocked && dispatch({ type: 'cut', deg })}
                 stressRef={state.scales.stress}
                 lineAxes={
-                  state.classId === 'cubic' || state.classId === 'tetragonal'
+                  state.classId === 'cubic' || state.classId === 'tetragonal' || state.classId === 'plane-square'
                     ? [0, 1, 2].filter((k) => Math.hypot(derived.R[0][k], derived.R[1][k]) > 0.9)
                     : [0]
                 }
