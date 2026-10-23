@@ -11,7 +11,10 @@ import {
   type KelvinMode,
   type KnobSnaps,
   type LoadCase,
+  type LoadCase6,
   type Mat,
+  type Principal3D,
+  type SolidResponse,
   type MaterialPreset,
   type OutOfPlane,
   type PatternCell,
@@ -28,6 +31,11 @@ import {
   SECTIONS,
   SYMMETRY_CLASSES,
   apparentConstants,
+  apparentStiffnessN,
+  principal3D,
+  solveMixedN,
+  strainTensor,
+  stressTensor,
   planeConstants,
   apparentStiffness,
   coaxialDirections,
@@ -86,6 +94,9 @@ export interface Overlays {
   cut: boolean;
 }
 
+/** '2d': a plane-stress or plane-strain section. '3d': the cube specimen with all six components. */
+export type Space = '2d' | '3d';
+
 export interface LabState {
   /** The example the current constants started from (Reset returns to it). */
   presetId: string;
@@ -102,7 +113,11 @@ export interface LabState {
   userPreset: MaterialPreset | null;
   thetaDeg: number;
   mode: PlaneMode;
+  /** The plane mode is kept while in 3D, for returning to 2D. */
+  space: Space;
   load: LoadCase;
+  /** Boundary conditions of the 3D cube, Voigt order 11, 22, 33, 23, 13, 12 in specimen axes. */
+  load3: LoadCase6;
   /** Reference stress (MPa) and strain used for default loads, slider ranges and arrow scale. */
   scales: { stress: number; strain: number };
   magnification: number;
@@ -134,6 +149,40 @@ export const EXPERIMENTS: Experiment[] = [
   { id: 'lock-xy', name: 'Shear constraint', hint: 'Traction σxx while the shear γxy is held at zero: a reaction τxy appears.', control: ['stress', 'stress', 'strain'], value: [1, 0, 0] },
   { id: 'uniaxial-strain', name: 'Uniaxial strain', hint: 'Displacement-controlled εxx with εyy = γxy = 0: the stresses are a column of C̄.', control: ['strain', 'strain', 'strain'], value: [1, 0, 0] },
 ];
+
+export interface Experiment3 {
+  id: string;
+  name: string;
+  hint: string;
+  control: Control[];
+  value: number[];
+}
+
+const S6C: Control[] = ['stress', 'stress', 'stress', 'stress', 'stress', 'stress'];
+
+export const EXPERIMENTS3: Experiment3[] = [
+  { id: 'uniaxial', name: 'Uniaxial stress', hint: 'Traction σxx on the x faces; every other traction is zero.', control: S6C, value: [1, 0, 0, 0, 0, 0] },
+  { id: 'shear', name: 'Pure shear', hint: 'Shear traction τxy on the x and y faces; every other traction is zero.', control: S6C, value: [0, 0, 0, 0, 0, 1] },
+  { id: 'hydrostatic', name: 'Hydrostatic pressure', hint: 'The same pressure on every face: σxx = σyy = σzz = −p, no shear.', control: S6C, value: [-1, -1, -1, 0, 0, 0] },
+  {
+    id: 'plane-strain',
+    name: 'Plane strain',
+    hint: 'Traction σxx with εzz, γyz and γxz held at zero: the 2D plane-strain test, inside the cube.',
+    control: ['stress', 'stress', 'strain', 'strain', 'strain', 'stress'],
+    value: [1, 0, 0, 0, 0, 0],
+  },
+  {
+    id: 'uniaxial-strain',
+    name: 'Uniaxial strain',
+    hint: 'Displacement-controlled εxx with every other strain held at zero: the stresses are a column of C.',
+    control: ['strain', 'strain', 'strain', 'strain', 'strain', 'strain'],
+    value: [1, 0, 0, 0, 0, 0],
+  },
+];
+
+export function loadCase3For(exp: Experiment3, scales: LabState['scales']): LoadCase6 {
+  return { control: [...exp.control], value: exp.value.map((v, i) => v * (exp.control[i] === 'stress' ? scales.stress : scales.strain)) };
+}
 
 export function loadCaseFor(exp: Experiment, scales: LabState['scales']): LoadCase {
   return {
@@ -209,7 +258,10 @@ export function initialStateFrom(preset: MaterialPreset, keep?: Partial<LabState
     userPreset: preset.id === 'user' ? preset : (keep?.userPreset ?? null),
     thetaDeg: 0,
     mode,
+    // 2D data has no 3D behaviour.
+    space: cls.dimension === 2 ? '2d' : (keep?.space ?? '2d'),
     load,
+    load3: loadCase3For(EXPERIMENTS3[0], scales),
     scales,
     magnification: niceRound(0.08 / Math.max(...strain.map(Math.abs))),
     selected: null,
@@ -240,6 +292,10 @@ export type Action =
   | { type: 'loadValue'; i: number; value: number }
   | { type: 'experiment'; id: string }
   | { type: 'loadCase'; load: LoadCase }
+  | { type: 'space'; space: Space }
+  | { type: 'control3'; i: number; control: Control }
+  | { type: 'loadValue3'; i: number; value: number }
+  | { type: 'loadCase3'; load: LoadCase6 }
   | { type: 'magnification'; value: number }
   | { type: 'select'; selection: Selection | null }
   | { type: 'pin'; snapshot: Snapshot | null }
@@ -251,7 +307,7 @@ export type Action =
 
 export function reducer(state: LabState, a: Action): LabState {
   // The user's material and orientation survive switching to an example and back.
-  const keep = { mode: state.mode, overlays: state.overlays, cutDeg: state.cutDeg, mohr: state.mohr, userPreset: state.userPreset, customR: state.customR };
+  const keep = { mode: state.mode, space: state.space, overlays: state.overlays, cutDeg: state.cutDeg, mohr: state.mohr, userPreset: state.userPreset, customR: state.customR };
   switch (a.type) {
     case 'preset':
       return a.id === 'user' && state.userPreset ? initialStateFrom(state.userPreset, keep) : initialState(a.id, keep);
@@ -267,7 +323,25 @@ export function reducer(state: LabState, a: Action): LabState {
     case 'resetParams':
       return { ...state, custom: false, params: { ...presetOf(state).params } };
     case 'resetLoad':
-      return { ...state, load: loadCaseFor(EXPERIMENTS[0], state.scales) };
+      return { ...state, load: loadCaseFor(EXPERIMENTS[0], state.scales), load3: loadCase3For(EXPERIMENTS3[0], state.scales) };
+    case 'space':
+      // 2D data has no 3D behaviour; selections and pins are tied to the matrices of one space.
+      if (a.space === '3d' && isPlaneData(state)) return state;
+      return a.space === state.space ? state : { ...state, space: a.space, selected: null, pinned: null };
+    case 'control3': {
+      const control = [...state.load3.control];
+      const value = [...state.load3.value];
+      control[a.i] = a.control;
+      value[a.i] = 0;
+      return { ...state, load3: { control, value } };
+    }
+    case 'loadValue3': {
+      const value = [...state.load3.value];
+      value[a.i] = a.value;
+      return { ...state, load3: { ...state.load3, value } };
+    }
+    case 'loadCase3':
+      return { ...state, load3: a.load };
     case 'param':
       return { ...state, custom: true, params: { ...state.params, [a.key]: a.value } };
     case 'section':
@@ -323,6 +397,14 @@ export function entryExperiment(sel: Selection, scales: LabState['scales']): Loa
   }
   value[sel.j] = scales.strain;
   return { control: ['strain', 'strain', 'strain'], value };
+}
+
+/** The 3D test that isolates an entry of the 6×6 C or S: its column is the response to a unit input. */
+export function entryExperiment3(sel: Selection, scales: LabState['scales']): LoadCase6 {
+  const value = [0, 0, 0, 0, 0, 0];
+  const kind: Control = sel.matrix === 'S' ? 'stress' : 'strain';
+  value[sel.j] = sel.matrix === 'S' ? scales.stress : scales.strain;
+  return { control: [kind, kind, kind, kind, kind, kind], value };
 }
 
 /** Prescribe a Kelvin mode as the strain state, scaled so its largest principal strain is the reference strain. */
@@ -389,6 +471,15 @@ export interface LabDerived {
   snaps: Record<string, KnobSnaps>;
   /** dσxx/dεxx under the current controls, with its bounds 1/S̄11 and C̄11. */
   apparentModulus: { value: number; free: number; locked: number };
+  /** The 3D cube under `load3`. */
+  solid: {
+    response: SolidResponse;
+    energy: number;
+    principalStress: Principal3D;
+    principalStrain: Principal3D;
+    /** dσxx/dεxx under the 3D controls, between 1/S11 and C11. */
+    apparentModulus: { value: number; free: number; locked: number };
+  };
 }
 
 export function deriveLab(s: LabState): LabDerived {
@@ -436,6 +527,18 @@ export function deriveLab(s: LabState): LabDerived {
       free: 1 / S2[0][0],
       locked: C2[0][0],
     },
+    solid: deriveSolid(S6, C6, s.load3),
+  };
+}
+
+function deriveSolid(S6: Mat, C6: Mat, load: LoadCase6): LabDerived['solid'] {
+  const response = solveMixedN(S6, load);
+  return {
+    response,
+    energy: 0.5 * response.stress.reduce((a, v, i) => a + v * response.strain[i], 0),
+    principalStress: principal3D(stressTensor(response.stress)),
+    principalStrain: principal3D(strainTensor(response.strain)),
+    apparentModulus: { value: apparentStiffnessN(C6, load.control, 0), free: 1 / S6[0][0], locked: C6[0][0] },
   };
 }
 
@@ -545,6 +648,28 @@ export function rotationSweep(s: LabState, q: SweepQuantity, n = 181): Array<{ t
   });
 }
 
+/** The same checks for the 3D cube. */
+function numericalChecks3D(s: LabState, d: LabDerived): NumericalCheck[] {
+  const rel = (A: Mat, B: Mat) => {
+    const ref = Math.max(...A.flat().map(Math.abs), ...B.flat().map(Math.abs), 1e-300);
+    return Math.max(...A.flat().map((a, k) => Math.abs(a - B.flat()[k]))) / ref;
+  };
+  const I6 = d.C6.map((row, i) => row.map((_, j) => (i === j ? 1 : 0)));
+  const { stress, strain } = d.solid.response;
+  const sScale = Math.max(...stress.map(Math.abs), 1e-300);
+  const Ceps = d.C6.map((row) => row.reduce((acc, v, k) => acc + v * strain[k], 0));
+  const prescribed = Math.max(
+    ...s.load3.control.map((c, i) => (c === 'stress' ? Math.abs(stress[i] - s.load3.value[i]) / s.scales.stress : Math.abs(strain[i] - s.load3.value[i]) / s.scales.strain)),
+  );
+  return [
+    { name: 'Positive definiteness', value: Math.min(...kelvinModuli(d.S6)) / 1000, limit: 0, detail: 'Smallest Kelvin modulus of the 3D stiffness (GPa); must be > 0.' },
+    { name: 'Symmetry of C', value: rel(d.C6, d.C6[0].map((_, j) => d.C6.map((row) => row[j]))), limit: 1e-12, detail: 'max |C − Cᵀ| / max |C|' },
+    { name: 'C S = I', value: rel(d.C6.map((row) => I6.map((_, j) => row.reduce((acc, v, k) => acc + v * d.S6[k][j], 0))), I6), limit: 1e-10, detail: 'max |C S − I|' },
+    { name: 'σ = C ε', value: Math.max(...Ceps.map((v, i) => Math.abs(v - stress[i]))) / sScale, limit: 1e-10, detail: 'Constitutive residual of the cube’s state, relative to max |σ|.' },
+    { name: 'Prescribed values met', value: prescribed, limit: 1e-12, detail: 'Largest mismatch of a prescribed stress or strain, relative to its reference value.' },
+  ];
+}
+
 // ---------------------------------------------------------------------------
 // Numerical checks: how well the arithmetic satisfies the equations it solves.
 // They say nothing about whether linear elasticity is the right model.
@@ -558,6 +683,7 @@ export interface NumericalCheck {
 }
 
 export function numericalChecks(s: LabState, d: LabDerived): NumericalCheck[] {
+  if (s.space === '3d') return numericalChecks3D(s, d);
   const rel = (A: Mat, B: Mat) => {
     const scaleRef = Math.max(...A.flat().map(Math.abs), ...B.flat().map(Math.abs), 1e-300);
     return Math.max(...A.flat().map((a, k) => Math.abs(a - B.flat()[k]))) / scaleRef;

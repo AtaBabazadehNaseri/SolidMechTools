@@ -18,6 +18,7 @@ const CATEGORY_NAME = {
   diagonal: 'direct term',
   'normal-normal': 'normal–normal coupling',
   'normal-shear': 'normal–shear coupling',
+  'shear-shear': 'shear–shear coupling',
 } as const;
 
 /** The other matrix's cofactor expression for entry (i, j): X_ij = (−1)^{i+j} M_ji(Y) / det Y. */

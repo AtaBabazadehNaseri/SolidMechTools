@@ -1,6 +1,6 @@
 import type { Mat, PlaneConstants, PlaneMode } from '../mechanics';
 import type { MatrixId, Selection } from '../app/lab';
-import { STRAIN_TEX, STRESS_TEX, entryCategory, fmt, toGPa, toPerTPa } from '../app/format';
+import { STRAIN6_TEX, STRAIN_TEX, STRESS6_TEX, STRESS_TEX, entryCategory, fmt, toGPa, toPerTPa } from '../app/format';
 import { Tex } from './Tex';
 
 interface Props {
@@ -26,17 +26,27 @@ export function MatrixGrid({ id, mode, M, pinned, activeCols, selected, onSelect
   const P = pinned?.map((row) => row.map((v) => toDisplay(id, v)));
   const maxAbs = Math.max(...D.flat().map(Math.abs));
   const zeroTol = 1e-9 * maxAbs;
-  const colTex = id === 'C' ? STRAIN_TEX : STRESS_TEX;
-  const rowTex = id === 'C' ? STRESS_TEX : STRAIN_TEX;
+  // 6×6: the full 3D matrices of the cube; 3×3: a plane section.
+  const n = M.length;
+  const solid = n === 6;
+  const colTex = solid ? (id === 'C' ? STRAIN6_TEX : STRESS6_TEX) : id === 'C' ? STRAIN_TEX : STRESS_TEX;
+  const rowTex = solid ? (id === 'C' ? STRESS6_TEX : STRAIN6_TEX) : id === 'C' ? STRESS_TEX : STRAIN_TEX;
+  const title = solid
+    ? id === 'C'
+      ? '\\boldsymbol{\\sigma} = \\mathbf{C}\\,\\boldsymbol{\\varepsilon}'
+      : '\\boldsymbol{\\varepsilon} = \\mathbf{S}\\,\\boldsymbol{\\sigma}'
+    : id === 'C'
+      ? '\\boldsymbol{\\sigma} = \\bar{\\mathbf{C}}\\,\\boldsymbol{\\varepsilon}'
+      : '\\boldsymbol{\\varepsilon} = \\bar{\\mathbf{S}}\\,\\boldsymbol{\\sigma}';
   const block = isBlock(id, mode);
   const other = id === 'C' ? 'S' : 'C';
 
   return (
-    <div className="matrix">
+    <div className={solid ? 'matrix solid' : 'matrix'}>
       <div className="matrix-title">
-        <Tex>{id === 'C' ? '\\boldsymbol{\\sigma} = \\bar{\\mathbf{C}}\\,\\boldsymbol{\\varepsilon}' : '\\boldsymbol{\\varepsilon} = \\bar{\\mathbf{S}}\\,\\boldsymbol{\\sigma}'}</Tex>
+        <Tex>{title}</Tex>
         <span className="matrix-sub">{id === 'C' ? 'stiffness · GPa' : 'compliance · TPa⁻¹'}</span>
-        {!planeData && (
+        {!planeData && !solid && (
         <span className={block ? 'origin block' : 'origin reduced'} title={block ? `Entries equal the 3D ${id} entries` : `Inverse of the in-plane block of the 3D ${other}; not the in-plane block of the 3D ${id}`}>
           {block ? `= 3D ${id} entries` : `reduced = ${other}̄⁻¹`}
         </span>
@@ -64,7 +74,7 @@ export function MatrixGrid({ id, mode, M, pinned, activeCols, selected, onSelect
                 const isMirror = selected?.matrix === id && selected.i === j && selected.j === i && i !== j;
                 const was = P?.[i][j];
                 const changed = was !== undefined && Math.abs(was - v) > 1e-6 * maxAbs;
-                const cls = ['cell', `cat-${entryCategory(i, j)}`, activeCols[j] ? 'active' : '', isSel ? 'selected' : '', isMirror ? 'mirror' : ''].join(' ');
+                const cls = ['cell', `cat-${entryCategory(i, j, n)}`, activeCols[j] ? 'active' : '', isSel ? 'selected' : '', isMirror ? 'mirror' : ''].join(' ');
                 return (
                   <td key={j}>
                     <button className={cls} onClick={() => onSelect({ matrix: id, i, j })}>
@@ -133,6 +143,34 @@ export function PlaneConstantsStrip({ c, mode }: { c: PlaneConstants; mode: Plan
       title="Read from S̄ in the specimen axes: what free (traction-controlled) 2D tests measure. ν = −εyy/εxx and η = γxy/εxx under σxx alone; η is the extension–shear coupling."
     >
       <span className="pc-title">2D constants ({mode === 'stress' ? 'plane stress' : 'plane strain'}, specimen axes)</span>
+      {items.map(([t, v, u]) => (
+        <span key={t} className="pc-item">
+          <Tex>{t}</Tex> <span className="pc-v">{v}</span>
+          {u && <span className="unit"> {u}</span>}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/** Engineering constants of the 3D compliance in specimen axes: what free tests on the cube measure. */
+export function SolidConstantsStrip({ S6 }: { S6: Mat }) {
+  const m = (i: number) => fmt(toGPa(1 / S6[i][i]), 4);
+  const nu = (i: number, j: number) => fmt(-S6[j][i] / S6[i][i], 4, 1e-12);
+  const items: Array<[string, string, string]> = [
+    ['E_x', m(0), 'GPa'],
+    ['E_y', m(1), 'GPa'],
+    ['E_z', m(2), 'GPa'],
+    ['G_{yz}', m(3), 'GPa'],
+    ['G_{xz}', m(4), 'GPa'],
+    ['G_{xy}', m(5), 'GPa'],
+    ['\\nu_{xy}', nu(0, 1), ''],
+    ['\\nu_{xz}', nu(0, 2), ''],
+    ['\\nu_{yz}', nu(1, 2), ''],
+  ];
+  return (
+    <div className="plane-constants" title="Read from S in the specimen axes: what free (traction-controlled) tests on the cube measure. All 21 constants are in the other-forms panel below.">
+      <span className="pc-title">3D constants (specimen axes)</span>
       {items.map(([t, v, u]) => (
         <span key={t} className="pc-item">
           <Tex>{t}</Tex> <span className="pc-v">{v}</span>

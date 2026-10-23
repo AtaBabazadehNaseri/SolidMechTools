@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from 'react';
+import { Suspense, lazy, useEffect, useMemo, useReducer, useState } from 'react';
 import type { PlaneMode } from './mechanics';
 import { type LabState, type Overlays, type Selection, deriveLab, deriveMaterial, entryExperiment, initialState, reducer, snapshotOf } from './app/lab';
 import { decodeFragment } from './app/share';
@@ -16,6 +16,8 @@ import { DirectionalPanel, RotationSweep } from './ui/DirectionalPanel';
 import { Details } from './ui/Details';
 import { GuideLibrary, GuideRail, type GuideRun } from './ui/GuideRail';
 import { type ThemePreference, useTheme } from './ui/theme';
+// three.js is only needed for the 3D mode, so it is loaded the first time 3D is opened.
+const Lab3D = lazy(() => import('./ui/Lab3D').then((m) => ({ default: m.Lab3D })));
 
 const THEMES: Array<{ id: ThemePreference; label: string; tip: string }> = [
   { id: 'system', label: 'Auto', tip: 'Follow the system setting' },
@@ -26,7 +28,7 @@ const THEMES: Array<{ id: ThemePreference; label: string; tip: string }> = [
 const MODES: Array<{ id: PlaneMode | '3d'; label: string }> = [
   { id: 'stress', label: '2D plane stress' },
   { id: 'strain', label: '2D plane strain' },
-  { id: '3d', label: '3D (coming soon)' },
+  { id: '3d', label: '3D' },
 ];
 
 const OVERLAYS: Array<{ key: keyof Overlays; label: string; tip: string }> = [
@@ -40,7 +42,7 @@ const OVERLAYS: Array<{ key: keyof Overlays; label: string; tip: string }> = [
 const MODE_TIPS: Record<string, string> = {
   stress: 'Plane stress: σzz = τyz = τxz = 0 (a thin sheet). The out-of-plane strains are free and reported as responses.',
   strain: 'Plane strain: εzz = γyz = γxz = 0 (a long body held along z). The out-of-plane stresses are reactions.',
-  '3d': 'The full 6×6 response of a cube.',
+  '3d': 'The full 3D response of a cube: all six stress components, each traction- or displacement-controlled.',
 };
 
 // The Lab shows everything; the rotation sweep sits inside the directional panel there.
@@ -112,8 +114,10 @@ export default function App() {
   };
   const startGuide = (id: string) => {
     const g = GUIDES.find((x) => x.id === id)!;
-    const fresh: GuideRun = { guideId: id, step: 0, answers: {}, observed: {}, solved: {}, start: state };
-    dispatch({ type: 'replace', state: entryState(g, 0, state, false) });
+    // Guides run on the 2D lab.
+    const start = { ...state, space: '2d' as const };
+    const fresh: GuideRun = { guideId: id, step: 0, answers: {}, observed: {}, solved: {}, start };
+    dispatch({ type: 'replace', state: entryState(g, 0, start, false) });
     setRun(fresh);
     setView('guides');
   };
@@ -165,24 +169,38 @@ export default function App() {
         {view === 'lab' && (
           <>
             <div className="seg mode-switch" role="radiogroup" aria-label="Analysis mode">
-              {MODES.map((m) => (
+              {MODES.map((m) => {
+                const current = state.space === '3d' ? '3d' : state.mode;
+                const blocked = planeData && m.id !== state.mode;
+                return (
                 <button
                   key={m.id}
-                  className={state.mode === m.id ? 'on' : ''}
-                  disabled={m.id === '3d' || (planeData && m.id !== state.mode)}
-                  aria-pressed={state.mode === m.id}
-                  onClick={() => m.id !== '3d' && dispatch({ type: 'mode', mode: m.id })}
-                  title={planeData && m.id !== '3d' && m.id !== state.mode ? 'This material was entered as 2D data for the other plane state; this one needs its out-of-plane constants.' : MODE_TIPS[m.id]}
+                  className={current === m.id ? 'on' : ''}
+                  disabled={blocked}
+                  aria-pressed={current === m.id}
+                  onClick={() => {
+                    if (m.id === '3d') return dispatch({ type: 'space', space: '3d' });
+                    dispatch({ type: 'space', space: '2d' });
+                    dispatch({ type: 'mode', mode: m.id });
+                  }}
+                  title={
+                    blocked
+                      ? m.id === '3d'
+                        ? 'This material was entered as 2D data, which has no 3D behaviour; enter it in 3D to use the cube.'
+                        : 'This material was entered as 2D data for the other plane state; this one needs its out-of-plane constants.'
+                      : MODE_TIPS[m.id]
+                  }
                 >
                   {m.label}
                 </button>
-              ))}
+                );
+              })}
             </div>
             <div className="top-actions">
               <button className="link" onClick={() => setView('guides')}>
                 Not sure what to do? Try a guided experience →
               </button>
-              {state.pinned ? (
+              {state.space === '3d' ? null : state.pinned ? (
                 <>
                   <span className="pinned-label" title="The dashed ghost and the “was”/pinned values refer to this state">
                     Pinned: {state.pinned.label}
@@ -225,6 +243,10 @@ export default function App() {
 
       {view === 'guides' && !inGuide ? (
         <GuideLibrary guides={GUIDES} completed={completed} onStart={startGuide} />
+      ) : !inGuide && state.space === '3d' ? (
+        <Suspense fallback={<p className="hint">Loading the 3D view…</p>}>
+          <Lab3D state={state} derived={derived} material={material} dispatch={dispatch} />
+        </Suspense>
       ) : (
         <main className={['layout', inGuide ? 'guide-layout' : '', hasRight ? '' : 'no-right', show.has('matrices') ? '' : 'no-band'].join(' ')}>
           <aside className="col-material">

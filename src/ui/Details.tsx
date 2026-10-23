@@ -47,7 +47,15 @@ export function Details({ state, derived, material, mode }: { state: LabState; d
   const plane = derived.cls.dimension === 2;
   return (
     <section className="panel details">
-      {plane ? (
+      {state.space === '3d' ? (
+        <details open>
+          <summary>Kelvin moduli</summary>
+          <div className="kelvin">
+            Eigenvalues of the 3D C in Mandel form (GPa): {material.kelvin3D.map((k) => fmt(toGPa(k), 4)).join(', ')}. They describe the
+            material itself, not its frame: rotating it moves every matrix entry but none of these.
+          </div>
+        </details>
+      ) : plane ? (
         <details open>
           <summary>3D matrices</summary>
           <p className="hint">

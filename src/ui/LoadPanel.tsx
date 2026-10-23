@@ -1,6 +1,6 @@
 import type { Control } from '../mechanics';
-import { type Action, EXPERIMENTS, type LabState, loadCaseFor, niceRound } from '../app/lab';
-import { COMP, STRAIN_TEX, STRESS_TEX, fmt } from '../app/format';
+import { type Action, EXPERIMENTS, EXPERIMENTS3, type LabState, loadCase3For, loadCaseFor, niceRound } from '../app/lab';
+import { COMP, COMP6, STRAIN6_TEX, STRAIN_TEX, STRESS6_TEX, STRESS_TEX, fmt } from '../app/format';
 import { NumberField } from './NumberField';
 import { Tex } from './Tex';
 
@@ -11,10 +11,71 @@ interface Props {
   locked?: boolean;
 }
 
-const sameLoad = (a: LabState['load'], b: LabState['load']) =>
+const sameLoad = (a: { control: readonly Control[]; value: readonly number[] }, b: { control: readonly Control[]; value: readonly number[] }) =>
   a.control.every((c, i) => c === b.control[i]) && a.value.every((v, i) => Math.abs(v - b.value[i]) <= 1e-12 * Math.max(1, Math.abs(v)));
 
 const CONTROL_NAME: Record<Control, string> = { stress: 'Traction', strain: 'Displacement' };
+
+interface RowsProps {
+  labels: readonly string[];
+  stressTex: readonly string[];
+  strainTex: readonly string[];
+  load: { control: readonly Control[]; value: readonly number[] };
+  scales: LabState['scales'];
+  onControl: (i: number, control: Control) => void;
+  onValue: (i: number, value: number) => void;
+}
+
+/** One row per component: traction or displacement control, and the prescribed value. */
+function LoadRows({ labels, stressTex, strainTex, load, scales, onControl, onValue }: RowsProps) {
+  return (
+    <>
+        {labels.map((_, i) => {
+          const isStress = load.control[i] === 'stress';
+          const span = 3 * (isStress ? scales.stress : scales.strain);
+          return (
+            <div className="load-row" key={i}>
+              <span className="comp">{labels[i]}</span>
+              <div className="seg" role="radiogroup" aria-label={`control of the ${labels[i]} component`}>
+                {(['stress', 'strain'] as Control[]).map((c) => (
+                  <button
+                    key={c}
+                    className={load.control[i] === c ? 'on' : ''}
+                    aria-pressed={load.control[i] === c}
+                    onClick={() => onControl(i, c)}
+                    title={c === 'stress' ? 'Prescribe the traction (stress) on the faces; the strain follows' : 'Prescribe the displacement (strain); the traction follows as a reaction'}
+                  >
+                    <span>{CONTROL_NAME[c]}</span>
+                    <span className="seg-sub">
+                      <Tex>{c === 'stress' ? stressTex[i] : strainTex[i]}</Tex> {c === 'stress' ? 'applied' : 'held'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+              <input
+                type="range"
+                min={-span}
+                max={span}
+                step={span / 300}
+                value={Math.min(Math.max(load.value[i], -span), span)}
+                onChange={(e) => onValue(i, Number(e.target.value))}
+                aria-label={`prescribed ${isStress ? 'stress' : 'strain'} ${labels[i]}`}
+              />
+              <NumberField
+                value={isStress ? load.value[i] : load.value[i] * 1e3}
+                unit={isStress ? 'MPa' : '×10⁻³'}
+                label={`prescribed ${isStress ? 'stress' : 'strain'} ${labels[i]}`}
+                onCommit={(v) => onValue(i, isStress ? v : v * 1e-3)}
+              />
+              <button className="mini" onClick={() => onValue(i, 0)} title="Set to zero">
+                0
+              </button>
+            </div>
+          );
+        })}
+    </>
+  );
+}
 
 export function LoadPanel({ state, dispatch, locked = false }: Props) {
   const { load, scales } = state;
@@ -36,54 +97,55 @@ export function LoadPanel({ state, dispatch, locked = false }: Props) {
         </div>
       </div>
 
-      {[0, 1, 2].map((i) => {
-        const isStress = load.control[i] === 'stress';
-        const span = 3 * (isStress ? scales.stress : scales.strain);
-        return (
-          <div className="load-row" key={i}>
-            <span className="comp">{COMP[i]}</span>
-            <div className="seg" role="radiogroup" aria-label={`control of the ${COMP[i]} component`}>
-              {(['stress', 'strain'] as Control[]).map((c) => (
-                <button
-                  key={c}
-                  className={load.control[i] === c ? 'on' : ''}
-                  aria-pressed={load.control[i] === c}
-                  onClick={() => dispatch({ type: 'control', i, control: c })}
-                  title={c === 'stress' ? 'Prescribe the traction (stress) on the faces; the strain follows' : 'Prescribe the displacement (strain); the traction follows as a reaction'}
-                >
-                  <span>{CONTROL_NAME[c]}</span>
-                  <span className="seg-sub">
-                    <Tex>{c === 'stress' ? STRESS_TEX[i] : STRAIN_TEX[i]}</Tex> {c === 'stress' ? 'applied' : 'held'}
-                  </span>
-                </button>
-              ))}
-            </div>
-            <input
-              type="range"
-              min={-span}
-              max={span}
-              step={span / 300}
-              value={Math.min(Math.max(load.value[i], -span), span)}
-              onChange={(e) => dispatch({ type: 'loadValue', i, value: Number(e.target.value) })}
-              aria-label={`prescribed ${isStress ? 'stress' : 'strain'} ${COMP[i]}`}
-            />
-            <NumberField
-              value={isStress ? load.value[i] : load.value[i] * 1e3}
-              unit={isStress ? 'MPa' : '×10⁻³'}
-              label={`prescribed ${isStress ? 'stress' : 'strain'} ${COMP[i]}`}
-              onCommit={(v) => dispatch({ type: 'loadValue', i, value: isStress ? v : v * 1e-3 })}
-            />
-            <button className="mini" onClick={() => dispatch({ type: 'loadValue', i, value: 0 })} title="Set to zero">
-              0
-            </button>
-          </div>
-        );
-      })}
+      <LoadRows
+        labels={COMP}
+        stressTex={STRESS_TEX}
+        strainTex={STRAIN_TEX}
+        load={load}
+        scales={scales}
+        onControl={(i, control) => dispatch({ type: 'control', i, control })}
+        onValue={(i, value) => dispatch({ type: 'loadValue', i, value })}
+      />
       <p className="hint">
         Idealized uniform boundary conditions on a homogeneous specimen: uniform face tractions produce a uniform stress equal to
         them, and prescribed face displacements produce a uniform strain. Real grips constrain only the ends.
       </p>
       </fieldset>
+    </section>
+  );
+}
+
+/** Boundary conditions of the 3D cube: all six components, each traction- or displacement-controlled. */
+export function LoadPanel3D({ state, dispatch }: Props) {
+  const { load3, scales } = state;
+  return (
+    <section className="panel load-panel">
+      <div className="load-head">
+        <h2>Boundary conditions (cube)</h2>
+        <div className="experiments">
+          {EXPERIMENTS3.map((e) => {
+            const on = sameLoad(load3, loadCase3For(e, scales));
+            return (
+              <button key={e.id} className={on ? 'chip on' : 'chip'} aria-pressed={on} title={e.hint} onClick={() => dispatch({ type: 'loadCase3', load: loadCase3For(e, scales) })}>
+                {e.name}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <LoadRows
+        labels={COMP6}
+        stressTex={STRESS6_TEX}
+        strainTex={STRAIN6_TEX}
+        load={load3}
+        scales={scales}
+        onControl={(i, control) => dispatch({ type: 'control3', i, control })}
+        onValue={(i, value) => dispatch({ type: 'loadValue3', i, value })}
+      />
+      <p className="hint">
+        Each of the six components is either traction-controlled (its stress prescribed, 0 = traction-free) or displacement-controlled
+        (its strain prescribed, 0 = held). Uniform conditions on a homogeneous cube, as in the 2D lab.
+      </p>
     </section>
   );
 }

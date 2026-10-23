@@ -24,6 +24,19 @@ Also in the lab:
 - snapping knobs ("= E₁", "isotropic in the 1–2 plane", "0");
 - real-material presets for all eight symmetry classes.
 
+### 3D mode
+
+The third button of the mode switch replaces the 2D section with a cube. Each of its six stress components is traction- or displacement-controlled, as in 2D. The 3D view shows:
+- the deformed cube with its face tractions, split into normal and shear parts (prescribed in blue, reactions in orange), and the material axes;
+- the full 6×6 C and S, where clicking an entry explains it and runs the one test that isolates it;
+- surfaces over every direction for Young's modulus E(n), linear compressibility β(n), and the minimum and maximum over m ⟂ n of the shear modulus G(n, m) and Poisson's ratio ν(n, m), with extremes and a hover readout. The x–y slice of E(n) is drawn in amber: it is the 2D polar plot of E(φ) in plane stress;
+- the principal stresses and strains in 3D, whether they are coaxial, and the three Mohr circles with the x, y and z faces;
+- the six Kelvin modes of C, with their multiplicities, each of which can be applied to the cube;
+- the 2D section (the x–y mid-plane) inside the cube, with a link back to 2D;
+- the apparent stiffness along x.
+
+Drag to rotate either view. The 3D code (three.js) loads only when 3D is first opened. 2D data entered by the user has no 3D behaviour, so 3D is disabled for it.
+
 ### Your own material
 
 "Enter your own material…" loads your data in one of four forms:
@@ -71,12 +84,13 @@ src/mechanics/   constitutive math only: no UI imports, unit-tested
   snapping.ts      admissible snap targets for knobs
   projection.ts    nearest matrix of a symmetry class (group averaging), distance to each class
   orientation.ts   material axes from two vectors or from direction cosines
+  solid.ts         the 3D cube: six-component mixed control, principal values
   constants.ts     apparent engineering constants, Kelvin moduli
 src/app/         state, actions, experiments, derived quantities
   ownMaterial.ts   entered matrices and constants: units, notations, parsing, checks
   share.ts         the material format (docs/material-format.md) and share links
 src/guides/      guided experiences: scripts over the same lab state, tested without the UI
-src/ui/          React + SVG views
+src/ui/          React + SVG views; three.js for the 3D mode (ui/three/viewer.ts)
 ```
 
 ### Guides

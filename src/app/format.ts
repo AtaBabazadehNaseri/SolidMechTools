@@ -27,12 +27,28 @@ export const STRAIN_TEX = ['\\varepsilon_{xx}', '\\varepsilon_{yy}', '\\gamma_{x
 export const STRESS_TXT = ['σxx', 'σyy', 'τxy'] as const;
 export const STRAIN_TXT = ['εxx', 'εyy', 'γxy'] as const;
 
-export type EntryCategory = 'diagonal' | 'normal-normal' | 'normal-shear';
+// The 3D specimen, Voigt order 11, 22, 33, 23, 13, 12 written in specimen axes.
+export const COMP6 = ['xx', 'yy', 'zz', 'yz', 'xz', 'xy'] as const;
+export const STRESS6_TEX = ['\\sigma_{xx}', '\\sigma_{yy}', '\\sigma_{zz}', '\\tau_{yz}', '\\tau_{xz}', '\\tau_{xy}'] as const;
+export const STRAIN6_TEX = ['\\varepsilon_{xx}', '\\varepsilon_{yy}', '\\varepsilon_{zz}', '\\gamma_{yz}', '\\gamma_{xz}', '\\gamma_{xy}'] as const;
+export const STRESS6_TXT = ['σxx', 'σyy', 'σzz', 'τyz', 'τxz', 'τxy'] as const;
+export const STRAIN6_TXT = ['εxx', 'εyy', 'εzz', 'γyz', 'γxz', 'γxy'] as const;
 
-export function entryCategory(i: number, j: number): EntryCategory {
+export type EntryCategory = 'diagonal' | 'normal-normal' | 'normal-shear' | 'shear-shear';
+
+/** Kind of coupling an entry carries; 2D matrices have 3 components (shear last), 3D ones 6 (shear from index 3). */
+export function entryCategory(i: number, j: number, n = 3): EntryCategory {
   if (i === j) return 'diagonal';
-  if (i < 2 && j < 2) return 'normal-normal';
+  const normals = n === 6 ? 3 : 2;
+  if (i < normals && j < normals) return 'normal-normal';
+  if (i >= normals && j >= normals) return 'shear-shear';
   return 'normal-shear';
+}
+
+/** Voigt-index symbol of a 3D entry, e.g. C_{14}. */
+export function entryTex6(matrix: 'C' | 'S', i: number, j: number): string {
+  const [a, b] = i <= j ? [i, j] : [j, i];
+  return `${matrix}_{${a + 1}${b + 1}}`;
 }
 
 /** Voigt-index symbol of a 2D entry, e.g. \bar{C}_{16}. Symmetric, so indices are sorted. */

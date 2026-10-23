@@ -29,11 +29,15 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
   const [entering, setEntering] = useState(false);
   const user = state.userPreset;
   const raised = material.symmetry.classId !== cls.id;
-  const groups = {
-    'in-plane': cls.params.filter((d) => derived.effects[d.key] === 'in-plane'),
-    'out-of-plane': cls.params.filter((d) => derived.effects[d.key] === 'out-of-plane'),
-    none: cls.params.filter((d) => derived.effects[d.key] === 'none'),
-  };
+  // In 3D every constant acts on the cube; in 2D they are grouped by what they affect in the section.
+  const groups =
+    state.space === '3d'
+      ? { 'in-plane': cls.params, 'out-of-plane': [], none: [] }
+      : {
+          'in-plane': cls.params.filter((d) => derived.effects[d.key] === 'in-plane'),
+          'out-of-plane': cls.params.filter((d) => derived.effects[d.key] === 'out-of-plane'),
+          none: cls.params.filter((d) => derived.effects[d.key] === 'none'),
+        };
   const modeName = state.mode === 'stress' ? 'plane stress' : 'plane strain';
   const knob = (key: string) => (
     <Knob
@@ -118,7 +122,7 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
 
       {!plane && (
         <label className="field">
-          <span>Section plane</span>
+          <span>{state.space === '3d' ? 'Material orientation in the cube (section presets)' : 'Section plane'}</span>
           <select value={state.section} onChange={(e) => dispatch({ type: 'section', section: e.target.value as SectionId | 'custom' })}>
             {Object.values(SECTIONS).map((s) => (
               <option key={s.id} value={s.id}>
@@ -131,7 +135,7 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
       )}
 
       <label className="field theta">
-        <span>In-plane rotation θ (or drag the teal handle on the ring)</span>
+        <span>{state.space === '3d' ? 'Rotation θ about z' : 'In-plane rotation θ (or drag the teal handle on the ring)'}</span>
         <input type="range" min={-180} max={180} step={1} value={state.thetaDeg} onChange={(e) => dispatch({ type: 'theta', deg: Number(e.target.value) })} />
         <span className="theta-value">{state.thetaDeg}°</span>
         <button className="mini" onClick={() => dispatch({ type: 'theta', deg: 0 })}>
