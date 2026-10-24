@@ -33,7 +33,7 @@ The Lab opens in 3D, the first button of the mode switch. Each of the cube's six
 - the deformed cube with its face tractions, split into normal and shear parts (prescribed in blue, reactions in orange);
 - the same overlays as 2D: material axes, material lines, principal stress and strain axes, and a cut plane at any normal, with its traction t = σ·n and its point on the Mohr circles;
 - the full 6×6 C and S, below the cube and the surface, where clicking an entry explains it and runs the one test that isolates it;
-- surfaces over every direction for Young's modulus E(n), linear compressibility β(n), and the minimum and maximum over m ⟂ n of the shear modulus G(n, m) and Poisson's ratio ν(n, m), each of the two switchable, with extremes and a hover readout. The x–y slice of E(n) is drawn in amber: it is the 2D polar plot of E(φ) in plane stress;
+- surfaces over every direction for Young's modulus E(n), linear compressibility β(n), and the minimum and maximum over m ⟂ n of the shear modulus G(n, m) and Poisson's ratio ν(n, m), each of the two switchable, with extremes, a hover readout and a readout along any typed direction. The x–y slice of E(n) is drawn in amber: it is the 2D polar plot of E(φ) in plane stress;
 - the stress and strain tensors, the principal stresses and strains in 3D, whether they are coaxial, and the three Mohr circles with the x, y and z faces;
 - the six Kelvin modes of C, with their multiplicities, each of which can be applied to the cube;
 - the 2D section (the x–y mid-plane) inside the cube, with a link back to 2D;

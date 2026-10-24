@@ -180,12 +180,33 @@ export function Specimen(p: Props) {
     else p.onTheta(d);
   };
 
+  // The handles are sliders for the keyboard too: arrows step 1°, Shift+arrows or Page Up/Down 15°.
+  const onKey = (which: 'theta' | 'cut') => (e: React.KeyboardEvent) => {
+    const step: Record<string, number> = { ArrowRight: 1, ArrowUp: 1, ArrowLeft: -1, ArrowDown: -1, PageUp: 15, PageDown: -15 };
+    const s = step[e.key];
+    if (s === undefined) return;
+    e.preventDefault();
+    const d = snapDeg((which === 'cut' ? p.cutDeg : p.thetaDeg) + (e.shiftKey ? 15 * Math.sign(s) : s), false);
+    if (which === 'cut') p.onCut(d);
+    else p.onTheta(d);
+  };
+  const slider = (which: 'theta' | 'cut', label: string, value: number) => ({
+    tabIndex: 0,
+    role: 'slider',
+    'aria-label': label,
+    'aria-valuemin': -180,
+    'aria-valuemax': 180,
+    'aria-valuenow': value,
+    'aria-valuetext': `${value}°`,
+    onKeyDown: onKey(which),
+  });
+
   const handle = (deg: number) => scr([RING * Math.cos((deg * Math.PI) / 180), RING * Math.sin((deg * Math.PI) / 180)]);
   const hT = handle(p.thetaDeg);
   const hC = handle(p.cutDeg);
 
   return (
-    <svg ref={svgRef} className="specimen" viewBox={`${-VIEW} ${-VIEW} ${2 * VIEW} ${2 * VIEW}`} role="img" aria-label="Specimen, reference and deformed configurations">
+    <svg ref={svgRef} className="specimen" viewBox={`${-VIEW} ${-VIEW} ${2 * VIEW} ${2 * VIEW}`} role="group" aria-label="Specimen, reference and deformed configurations">
       <defs>
         <clipPath id="deformed-clip">
           <polygon points={pts(deformed)} />
@@ -226,7 +247,7 @@ export function Specimen(p: Props) {
 
       <HeldLabels control={p.control} map={map} />
 
-      <g className="handle handle-theta" onPointerDown={(e) => onDown(e, 'theta')} onPointerMove={onMove}>
+      <g className="handle handle-theta" onPointerDown={(e) => onDown(e, 'theta')} onPointerMove={onMove} {...slider('theta', 'Material angle θ', p.thetaDeg)}>
         <circle cx={hT[0]} cy={hT[1]} r={10} />
       </g>
       <text x={hT[0]} y={hT[1] + (hT[1] > 0 ? 26 : -16)} className="handle-label" textAnchor="middle">
@@ -234,7 +255,7 @@ export function Specimen(p: Props) {
       </text>
       {ov.cut && (
         <>
-          <g className="handle handle-cut" onPointerDown={(e) => onDown(e, 'cut')} onPointerMove={onMove}>
+          <g className="handle handle-cut" onPointerDown={(e) => onDown(e, 'cut')} onPointerMove={onMove} {...slider('cut', 'Angle of the cut normal n', p.cutDeg)}>
             <rect x={hC[0] - 8} y={hC[1] - 8} width={16} height={16} rx={3} />
           </g>
           {/* Inside the ring, so it never collides with the θ label outside. */}

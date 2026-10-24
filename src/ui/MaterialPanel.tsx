@@ -43,6 +43,7 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
   const [entering, setEntering] = useState(false);
   const user = state.userPreset;
   const raised = material.symmetry.classId !== cls.id;
+  const userPlaneClass = user && SYMMETRY_CLASSES[user.classId].dimension === 2 ? user.classId : null;
   // In 3D every constant acts on the cube; in 2D they are grouped by what they affect in the section.
   const groups =
     state.space === '3d'
@@ -83,15 +84,6 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
           }}
         />
       )}
-      {plane ? (
-        <div className="field">
-          <span>Elastic symmetry class</span>
-          <div className="plane-data">
-            <b>{cls.name}</b>: in-plane data for {state.mode === 'stress' ? 'plane stress' : 'plane strain'}. Out-of-plane results need 3D
-            constants and are not shown; the mode is fixed.
-          </div>
-        </div>
-      ) : (
       <label className="field">
         <span>Elastic symmetry class</span>
         <select className="class-select" value={state.classId} onChange={(e) => dispatch({ type: 'symmetryClass', classId: e.target.value as SymmetryClassId })}>
@@ -100,8 +92,15 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
               {SYMMETRY_CLASSES[c].name} · {SYMMETRY_CLASSES[c].independentConstants}
             </option>
           ))}
+          {/* Entered 2D data is a class of its own; choosing a 3D class leaves it, choosing this returns to it. */}
+          {userPlaneClass && <option value={userPlaneClass}>Your 2D data · {SYMMETRY_CLASSES[userPlaneClass].name}</option>}
         </select>
       </label>
+      {plane && (
+        <div className="plane-data">
+          <b>{cls.name}</b>: in-plane data for {state.mode === 'stress' ? 'plane stress' : 'plane strain'}. Out-of-plane results need 3D constants
+          and are not shown; the mode is fixed. Choose a class above to go back to the examples.
+        </div>
       )}
       <label className="field">
         <span>Material</span>

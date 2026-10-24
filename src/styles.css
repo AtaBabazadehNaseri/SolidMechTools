@@ -2365,12 +2365,13 @@ fieldset.plain:disabled {
   border-radius: 6px;
 }
 
-/* 3D: the cube and the directional surface on top, the matrices one level below them. */
+/* 3D: the cube and the directional surface on top, then the loads and response beside the principal axes and
+   Kelvin modes, and the 6×6 matrices last. */
 .layout.lab3d {
   grid-template-areas:
     'material cube surface'
-    'material band band'
-    'material center right';
+    'material center right'
+    'material band band';
 }
 .lab3d .cube-area {
   grid-area: cube;
@@ -2390,19 +2391,80 @@ fieldset.plain:disabled {
 .lab3d .surface-area > .panel {
   flex: 1;
 }
+/* One column beside the material: surface, cube, loads and response, principal axes and Kelvin modes, matrices. */
 @media (max-width: 1400px) {
   .layout.lab3d {
     grid-template-areas:
-      'material cube'
       'material surface'
-      'material band'
+      'material cube'
       'material center'
-      'material right';
+      'material right'
+      'material band';
   }
 }
 @media (max-width: 860px) {
   .layout.lab3d {
-    grid-template-areas: 'material' 'cube' 'surface' 'band' 'center' 'right';
+    grid-template-areas: 'material' 'surface' 'cube' 'center' 'right' 'band';
+  }
+}
+
+/* 2D Lab, three columns: the small matrices, the specimen, the loads and the sweep in the middle; the
+   directional properties, the response and the principal axes and Kelvin modes on the right. */
+.layout.lab2d {
+  grid-template-areas: 'material center right';
+}
+.lab2d .band {
+  display: flex;
+  flex-wrap: wrap;
+}
+.lab2d .band-left {
+  flex: 1 1 560px;
+}
+.lab2d .band-info {
+  flex: 1 1 240px;
+}
+/* One column beside the material: matrices, directional properties, specimen, loads, response, principal axes
+   and Kelvin modes, sweep. The column wrappers dissolve so their panels can interleave. */
+@media (max-width: 1400px) {
+  .layout.lab2d {
+    grid-template-areas:
+      'material band'
+      'material directional'
+      'material specimen'
+      'material loads'
+      'material response'
+      'material principal'
+      'material sweep';
+  }
+  .lab2d .col-center,
+  .lab2d .col-right {
+    display: contents;
+  }
+  .lab2d .band {
+    grid-area: band;
+  }
+  .lab2d .directional {
+    grid-area: directional;
+  }
+  .lab2d .specimen-panel {
+    grid-area: specimen;
+  }
+  .lab2d .load-panel {
+    grid-area: loads;
+  }
+  .lab2d .readouts {
+    grid-area: response;
+  }
+  .lab2d .principal-panel {
+    grid-area: principal;
+  }
+  .lab2d .sweep-panel {
+    grid-area: sweep;
+  }
+}
+@media (max-width: 860px) {
+  .layout.lab2d {
+    grid-template-areas: 'material' 'band' 'directional' 'specimen' 'loads' 'response' 'principal' 'sweep';
   }
 }
 
@@ -2436,4 +2498,28 @@ fieldset.plain:disabled {
 }
 .band.folded {
   display: block;
+}
+/* The ring handles take keyboard focus as sliders. */
+.specimen .handle:focus {
+  outline: none;
+}
+.specimen .handle:focus-visible circle,
+.specimen .handle:focus-visible rect {
+  stroke: var(--text);
+  stroke-width: 3;
+}
+/* Reading a directional quantity along a typed direction. */
+.probe-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 13px;
+  margin: 2px 0 6px;
+}
+.probe-row input {
+  width: 4.5em;
+}
+.probe-out {
+  flex: 1 1 100%;
 }

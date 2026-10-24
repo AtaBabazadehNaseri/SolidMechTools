@@ -62,7 +62,7 @@ export function Lab3D({ state, derived, material, dispatch, matricesOpen, onTogg
         <MaterialPanel state={state} derived={derived} material={material} dispatch={dispatch} />
       </aside>
 
-      {/* On top: the cube and, beside it when three columns fit, the directional surface. */}
+      {/* On top: the cube and, beside it when three columns fit, the directional surface (above it when not). */}
       <div className="cube-area">
         <section className="panel specimen-panel">
           <div className="overlay-bar">
@@ -126,7 +126,18 @@ export function Lab3D({ state, derived, material, dispatch, matricesOpen, onTogg
         <Surface3D S6={derived.S6} R={derived.R} perspective={state.view3.perspective} materialAxes={state.overlays.materialAxes} />
       </div>
 
-      {/* The matrices, one level below the cube; they can be folded away. */}
+      <div className="col-center">
+        <LoadPanel3D state={state} dispatch={dispatch} />
+        {/* The cube's response sits under its boundary conditions. */}
+        <Readouts3D state={state} derived={derived} />
+      </div>
+
+      <div className="col-right">
+        <Principal3DPanel derived={derived} cut={cut} />
+        <Kelvin3DPanel state={state} derived={derived} dispatch={dispatch} />
+      </div>
+
+      {/* The 6×6 matrices close the page; they can be folded away. */}
       <section className={matricesOpen ? 'panel band' : 'panel band folded'}>
         <BandHead open={matricesOpen} onToggle={onToggleMatrices} label="Stiffness C and compliance S (6×6)" />
         {matricesOpen && (
@@ -166,17 +177,6 @@ export function Lab3D({ state, derived, material, dispatch, matricesOpen, onTogg
           </>
         )}
       </section>
-
-      <div className="col-center">
-        <LoadPanel3D state={state} dispatch={dispatch} />
-        {/* The cube's response sits under its boundary conditions. */}
-        <Readouts3D state={state} derived={derived} />
-      </div>
-
-      <div className="col-right">
-        <Principal3DPanel derived={derived} cut={cut} />
-        <Kelvin3DPanel state={state} derived={derived} dispatch={dispatch} />
-      </div>
     </main>
   );
 }

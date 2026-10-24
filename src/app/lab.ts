@@ -352,9 +352,14 @@ export function reducer(state: LabState, a: Action): LabState {
       return a.id === 'user' && state.userPreset ? initialStateFrom(state.userPreset, keep) : initialState(a.id, keep);
     case 'loadMaterial':
       return { ...initialStateFrom(a.preset, { ...keep, userPreset: a.preset }), thetaDeg: a.thetaDeg ?? 0 };
-    case 'symmetryClass':
+    case 'symmetryClass': {
+      if (a.classId === state.classId) return state;
+      // The user's own material is the only member of its class when it is 2D data.
+      if (state.userPreset?.classId === a.classId) return initialStateFrom(state.userPreset, keep);
       // A new class starts from its first example.
-      return a.classId === state.classId ? state : initialState(PRESETS.find((p) => p.classId === a.classId)!.id, keep);
+      const first = PRESETS.find((p) => p.classId === a.classId);
+      return first ? initialState(first.id, keep) : state;
+    }
     case 'custom':
       return { ...state, custom: true };
     case 'reset':
@@ -402,8 +407,9 @@ export function reducer(state: LabState, a: Action): LabState {
     case 'resetOrientation':
       return { ...state, thetaDeg: 0, tiltDeg: [0, 0] };
     case 'mode':
-      // 2D data describes one plane state; the other one needs the out-of-plane constants.
-      if (isPlaneData(state)) return state;
+      // 2D data describes one plane state; the other one needs the out-of-plane constants. Choosing the current
+      // mode again changes nothing, so it keeps a pinned comparison.
+      if (isPlaneData(state) || a.mode === state.mode) return state;
       return { ...state, mode: a.mode, pinned: null };
     case 'control': {
       // Switching a component's control starts from zero: traction-free or locked.

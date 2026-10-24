@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { axesFromVectors, inverse, kelvinModuli } from '../mechanics';
 import { decodeFragment, documentOf, encodeFragment } from './share';
-import { EXPERIMENTS3, type LabState, cut3Of, deriveLab, entryExperiment3, initialState, loadCase3For, numericalChecks, reducer } from './lab';
+import { EXPERIMENTS3, type LabState, cut3Of, deriveLab, entryExperiment3, initialState, loadCase3For, numericalChecks, reducer, snapshotOf } from './lab';
 import { analyze, toLoadable } from './ownMaterial';
 
 describe('3D mode', () => {
@@ -116,5 +116,28 @@ describe('share links keep the 3D view', () => {
       if (!r || 'error' in r) throw new Error('no document');
       expect(r.space).toBe(s.space);
     }
+  });
+});
+
+describe('mode and material navigation', () => {
+  it('choosing the current 2D mode again keeps a pinned comparison; changing it clears the pin', () => {
+    for (const mode of ['stress', 'strain'] as const) {
+      const s0 = { ...initialState('ort-9b'), mode };
+      const s = reducer(s0, { type: 'pin', snapshot: snapshotOf(s0, deriveLab(s0)) });
+      expect(reducer(s, { type: 'mode', mode }).pinned).not.toBeNull();
+      expect(reducer(s, { type: 'mode', mode: mode === 'stress' ? 'strain' : 'stress' }).pinned).toBeNull();
+    }
+  });
+
+  it('after loading 2D data, a 3D class goes back to the examples and the 2D class returns to the data', () => {
+    const e = { definition: 'constants' as const, dimension: 2 as const, plane: 'stress' as const, classId: 'plane-orthotropic' as const, constants: { E1: 180, E2: 10, nu12: 0.3, G12: 7 }, unit: 'GPa' as const };
+    const plane = reducer(initialState('cub-3a'), { type: 'loadMaterial', preset: toLoadable(e, analyze(e), { classId: 'plane-orthotropic', R: [[1, 0, 0], [0, 1, 0], [0, 0, 1]], thetaDeg: 0, name: '', source: '' }).preset });
+    expect(plane.classId).toBe('plane-orthotropic');
+    const cubic = reducer(plane, { type: 'symmetryClass', classId: 'cubic' });
+    expect(cubic.presetId).toBe('cub-3a');
+    expect(reducer(cubic, { type: 'space', space: '3d' }).space).toBe('3d');
+    const back = reducer(cubic, { type: 'symmetryClass', classId: 'plane-orthotropic' });
+    expect(back.presetId).toBe('user');
+    expect(back.params).toEqual(plane.params);
   });
 });

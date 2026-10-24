@@ -127,18 +127,25 @@ export function Surface3D({ S6, R, perspective, materialAxes }: Props) {
   const [failed, setFailed] = useState(false);
   const [q, setQ] = useState<DirectionalQuantity>('E');
   const [hover, setHover] = useState<{ n: number[]; lo: number; hi: number } | null>(null);
+  // A direction typed in: the same reading as pointing, without a pointer. Marked on the surface.
+  const [probeText, setProbeText] = useState(['1', '1', '1']);
+  const probe = useMemo(() => {
+    const v = probeText.map((s) => Number(s.trim().replace(/−/g, '-')));
+    const len = Math.hypot(...v);
+    return v.every(Number.isFinite) && len > 0 ? v.map((x) => x / len) : null;
+  }, [probeText]);
   // For G and ν: the smallest and the largest value over m, each shown or hidden.
   const [showLo, setShowLo] = useState(true);
   const [showHi, setShowHi] = useState(true);
   const ext = useMemo(() => directionalExtremes(S6, q), [S6, q]);
-  const latest = useRef({ S6, R, ext, q, showLo, showHi, materialAxes, perspective });
-  latest.current = { S6, R, ext, q, showLo, showHi, materialAxes, perspective };
+  const latest = useRef({ S6, R, ext, q, showLo, showHi, materialAxes, perspective, probe });
+  latest.current = { S6, R, ext, q, showLo, showHi, materialAxes, perspective, probe };
 
   const draw = () => {
     const v = viewer.current;
     const g = group.current;
     if (!v || !g) return;
-    const { S6: S, R: Rm, ext: e, q: qq, showLo: lo, showHi: hi, materialAxes: axesOn } = latest.current;
+    const { S6: S, R: Rm, ext: e, q: qq, showLo: lo, showHi: hi, materialAxes: axesOn, probe: pn } = latest.current;
     clearGroup(g);
     pickMesh.current = null;
     const def = Q[qq];
@@ -230,6 +237,20 @@ export function Surface3D({ S6, R, perspective, materialAxes }: Props) {
       l.position.copy(d.multiplyScalar(r * 1.01 + 0.12));
       g.add(l);
     }
+    // The typed probe direction, as a line out to the surface it reads.
+    if (pn) {
+      const r = valuesAt(S, qq, pn);
+      const reach = Math.abs(def.pair && !lo ? r.hi : r.lo) / scale;
+      const d = new THREE.Vector3(...(pn as [number, number, number]));
+      const c = cssColor('--stress');
+      g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(), d.clone().multiplyScalar(Math.max(reach, 0.05) * 1.02)]), new THREE.LineBasicMaterial({ color: c })));
+      const tip = new THREE.Mesh(new THREE.SphereGeometry(0.035, 12, 8), new THREE.MeshBasicMaterial({ color: c }));
+      tip.position.copy(d.clone().multiplyScalar(reach * 1.02));
+      g.add(tip);
+      const l = v.label('n', 'three-label cut');
+      l.position.copy(d.multiplyScalar(reach * 1.02 + 0.12));
+      g.add(l);
+    }
     v.render();
   };
 
@@ -280,11 +301,18 @@ export function Surface3D({ S6, R, perspective, materialAxes }: Props) {
     // The scene is built once; `draw` reads the latest props.
   }, []);
 
-  useEffect(draw, [S6, R, ext, q, showLo, showHi, materialAxes]);
+  useEffect(draw, [S6, R, ext, q, showLo, showHi, materialAxes, probe]);
   useEffect(() => viewer.current?.setPerspective(perspective), [perspective]);
 
   const def = Q[q];
   const f = (x: number) => `${fmt(def.show(x), 4, 1e-12)}${def.unit ? ` ${def.unit}` : ''}`;
+  // One value, or the range over m ⟂ n (a single value when it does not depend on m).
+  const reading = (r: { lo: number; hi: number }) =>
+    !def.pair
+      ? `${def.label} = ${f(r.lo)}`
+      : Math.abs(r.hi - r.lo) <= 1e-9 * Math.max(Math.abs(r.hi), 1e-300)
+        ? `${def.label} = ${f(r.lo)} for every m ⟂ n`
+        : `${def.label} from ${f(r.lo)} to ${f(r.hi)} over m ⟂ n`;
   return (
     <section className="panel surface3d">
       <div className="panel-head">
@@ -334,12 +362,32 @@ export function Surface3D({ S6, R, perspective, materialAxes }: Props) {
         {hover ? (
           <>
             Along n = {vec(hover.n)}:{' '}
-            <b>{def.pair ? `${def.label} from ${f(hover.lo)} to ${f(hover.hi)} over m ⟂ n` : `${def.label} = ${f(hover.lo)}`}</b>
+            <b>{reading(hover)}</b>
           </>
         ) : (
           <span className="muted">Point at the surface to read the value along that direction. {KEYS_HINT}</span>
         )}
       </p>
+      <div className="probe-row">
+        <span>Read along n =</span>
+        {['x', 'y', 'z'].map((c, i) => (
+          <input key={c} aria-label={`probe direction, ${c} component`} value={probeText[i]} onChange={(e) => setProbeText(probeText.map((s, k) => (k === i ? e.target.value : s)))} />
+        ))}
+        <span className="probe-out" aria-live="polite">
+          {probe ? (
+            (() => {
+              const r = valuesAt(S6, q, probe);
+              return (
+                <>
+                  {vec(probe)}: <b>{reading(r)}</b>
+                </>
+              );
+            })()
+          ) : (
+            'Enter three numbers, not all zero.'
+          )}
+        </span>
+      </div>
       {Math.abs(ext.max.value - ext.min.value) <= 1e-6 * Math.max(Math.abs(ext.max.value), 1e-300) ? (
         <p className="surface-read">
           <b>

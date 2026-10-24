@@ -134,8 +134,9 @@ export default function App() {
   // Nothing on screen may change, or give the answer away, before a step's prediction is answered.
   const predicted = !inGuide || !step!.predict || run!.answers[run!.step] !== undefined;
   const show = new Set<PanelId>(inGuide ? [...step!.show, ...(predicted ? (step!.try?.show ?? []) : [])] : ALL_PANELS);
-  // In a guide the directional plot is often the point of the step, so it sits beside the specimen.
-  const directionalRight = inGuide && show.has('directional');
+  // The directional plot sits beside the specimen: at the top of the right column in the Lab, and in a guide,
+  // where it is often the point of the step.
+  const directionalRight = show.has('directional');
   const sweepPanel = inGuide && show.has('sweep');
   const hasRight = show.has('principal') || show.has('kelvin') || show.has('response') || directionalRight || sweepPanel;
   const bandOpen = inGuide || matricesOpen;
@@ -147,6 +148,53 @@ export default function App() {
   const sRef = Math.max(...response.stress.map(Math.abs));
   const eRef = Math.max(...response.strain.map(Math.abs));
   const select = (selection: Selection) => dispatch({ type: 'select', selection });
+
+  // The C̄ and S̄ band: at the top of the middle column in the Lab, across both columns in a guide.
+  const band = show.has('matrices') && (
+    <section className={bandOpen ? 'panel band' : 'panel band folded'}>
+      {!inGuide && <BandHead open={matricesOpen} onToggle={() => setMatricesOpen((o) => !o)} label="Stiffness C̄ and compliance S̄ of the section" />}
+      {bandOpen && (
+        <>
+          <div className="band-left">
+            <div className="band-matrices">
+              <MatrixGrid
+                id="C"
+                mode={state.mode}
+                M={C2}
+                pinned={state.pinned?.C2 ?? null}
+                activeCols={response.strain.map((v) => nonzero(v, eRef))}
+                selected={state.selected}
+                onSelect={select}
+                planeData={planeData}
+              />
+              <MatrixGrid
+                id="S"
+                mode={state.mode}
+                M={S2}
+                pinned={state.pinned?.S2 ?? null}
+                activeCols={response.stress.map((v) => nonzero(v, sRef))}
+                selected={state.selected}
+                onSelect={select}
+                planeData={planeData}
+              />
+            </div>
+            <PlaneConstantsStrip c={derived.plane} mode={state.mode} />
+          </div>
+          <div className="band-info">
+            <EntryInfo
+              selection={state.selected}
+              mode={state.mode}
+              S2={S2}
+              C2={C2}
+              onRun={() => state.selected && dispatch({ type: 'loadCase', load: entryExperiment(state.selected, state.scales) })}
+              planeData={planeData}
+            />
+            <MatrixLegend />
+          </div>
+        </>
+      )}
+    </section>
+  );
 
   return (
     <div className="app">
@@ -253,7 +301,7 @@ export default function App() {
           <Lab3D state={state} derived={derived} material={material} dispatch={dispatch} matricesOpen={matricesOpen} onToggleMatrices={() => setMatricesOpen((o) => !o)} />
         </Suspense>
       ) : (
-        <main className={['layout', inGuide ? 'guide-layout' : '', hasRight ? '' : 'no-right', show.has('matrices') ? '' : 'no-band'].join(' ')}>
+        <main className={['layout', inGuide ? 'guide-layout' : 'lab2d', hasRight ? '' : 'no-right', show.has('matrices') ? '' : 'no-band'].join(' ')}>
           <aside className="col-material">
             {inGuide ? (
               <GuideRail
@@ -283,53 +331,10 @@ export default function App() {
             )}
           </aside>
 
-          {show.has('matrices') && (
-            <section className={bandOpen ? 'panel band' : 'panel band folded'}>
-              {!inGuide && <BandHead open={matricesOpen} onToggle={() => setMatricesOpen((o) => !o)} label="Stiffness C̄ and compliance S̄ of the section" />}
-              {bandOpen && (
-              <>
-              <div className="band-left">
-              <div className="band-matrices">
-                <MatrixGrid
-                  id="C"
-                  mode={state.mode}
-                  M={C2}
-                  pinned={state.pinned?.C2 ?? null}
-                  activeCols={response.strain.map((v) => nonzero(v, eRef))}
-                  selected={state.selected}
-                  onSelect={select}
-                  planeData={planeData}
-                />
-                <MatrixGrid
-                  id="S"
-                  mode={state.mode}
-                  M={S2}
-                  pinned={state.pinned?.S2 ?? null}
-                  activeCols={response.stress.map((v) => nonzero(v, sRef))}
-                  selected={state.selected}
-                  onSelect={select}
-                  planeData={planeData}
-                />
-              </div>
-              <PlaneConstantsStrip c={derived.plane} mode={state.mode} />
-              </div>
-              <div className="band-info">
-                <EntryInfo
-                  selection={state.selected}
-                  mode={state.mode}
-                  S2={S2}
-                  C2={C2}
-                  onRun={() => state.selected && dispatch({ type: 'loadCase', load: entryExperiment(state.selected, state.scales) })}
-                  planeData={planeData}
-                />
-                <MatrixLegend />
-              </div>
-              </>
-              )}
-            </section>
-          )}
+          {inGuide && band}
 
           <div className="col-center">
+            {!inGuide && band}
             <section className="panel specimen-panel">
               {!inGuide && (
                 <div className="overlay-bar">
@@ -368,7 +373,7 @@ export default function App() {
               <MagnificationControl state={state} dispatch={dispatch} maxStrain={Math.max(...response.strain.map(Math.abs))} />
             </section>
             {show.has('loads') && <LoadPanel state={state} dispatch={dispatch} locked={!predicted} />}
-            {show.has('directional') && !directionalRight && <DirectionalPanel state={state} derived={derived} material={material} dispatch={dispatch} sweep={false} />}
+            {/* In the Lab the sweep closes the middle column. */}
             {!inGuide && <RotationSweep state={state} onTheta={(deg) => dispatch({ type: 'theta', deg })} panel />}
           </div>
 
