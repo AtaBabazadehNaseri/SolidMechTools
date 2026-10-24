@@ -8,7 +8,7 @@ Interactive tools for building physical intuition in solid mechanics.
 
 **Try it: https://atababazadehnaseri.github.io/SolidMechTools/** (runs in the browser; best on a laptop or desktop)
 
-![Elasticity Tensor Lab: an off-axis fibre-composite ply shearing under pure tension](public/og-image.png)
+![Elasticity Tensor Lab: the 3D view of a cubic crystal, with its Young’s modulus surface](public/og-image.png)
 
 A homogeneous specimen of a linear elastic material: a cube in 3D, where the
 Lab opens, or a section in plane stress or plane strain. Material constants are

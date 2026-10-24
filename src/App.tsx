@@ -69,9 +69,9 @@ function saveCompleted(s: Set<string>) {
   }
 }
 
-/** A material carried by the URL (a share link), or the default example. The Lab opens in 3D. */
+/** A material carried by the URL (a share link), or the default example: the cubic crystal, in 3D. */
 function startState(): { state: LabState; message: string | null } {
-  const fallback = initialState('iso-2a', { space: '3d' });
+  const fallback = initialState('cub-3a', { space: '3d' });
   const read = typeof location === 'undefined' ? null : decodeFragment(location.hash);
   if (!read) return { state: fallback, message: null };
   if ('error' in read) return { state: fallback, message: `The link could not be opened: ${read.error}` };
