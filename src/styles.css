@@ -2354,3 +2354,86 @@ fieldset.plain:disabled {
 .orientation-editor .vec-row {
   grid-template-columns: 96px repeat(3, minmax(0, 1fr));
 }
+.view-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 2px;
+}
+.three-host:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+/* 3D: the cube and the directional surface on top, the matrices one level below them. */
+.layout.lab3d {
+  grid-template-areas:
+    'material cube surface'
+    'material band band'
+    'material center right';
+}
+.lab3d .cube-area {
+  grid-area: cube;
+}
+.lab3d .surface-area {
+  grid-area: surface;
+}
+/* The two top panels share a row and end level with each other. */
+.lab3d .cube-area,
+.lab3d .surface-area {
+  min-width: 0;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+}
+.lab3d .cube-area > .panel,
+.lab3d .surface-area > .panel {
+  flex: 1;
+}
+@media (max-width: 1400px) {
+  .layout.lab3d {
+    grid-template-areas:
+      'material cube'
+      'material surface'
+      'material band'
+      'material center'
+      'material right';
+  }
+}
+@media (max-width: 860px) {
+  .layout.lab3d {
+    grid-template-areas: 'material' 'cube' 'surface' 'band' 'center' 'right';
+  }
+}
+
+/* The fold of the matrix band, styled as the band's heading. */
+.band-head {
+  grid-column: 1 / -1;
+  flex: 0 0 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-align: left;
+}
+.band-head:hover:not(:disabled) {
+  color: var(--text);
+}
+.band-caret {
+  width: 1em;
+}
+.band-hidden {
+  font-weight: normal;
+  letter-spacing: 0;
+  text-transform: none;
+}
+.band.folded {
+  display: block;
+}

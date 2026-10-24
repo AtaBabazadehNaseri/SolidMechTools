@@ -9,7 +9,7 @@ import { MatrixGrid } from './ui/MatrixGrid';
 import { EntryInfo } from './ui/EntryInfo';
 import { MaterialPanel } from './ui/MaterialPanel';
 import { LoadPanel, MagnificationControl } from './ui/LoadPanel';
-import { MatrixLegend, PlaneConstantsStrip } from './ui/MatrixGrid';
+import { BandHead, MatrixLegend, PlaneConstantsStrip } from './ui/MatrixGrid';
 import { Readouts } from './ui/Readouts';
 import { PrincipalPanel } from './ui/PrincipalPanel';
 import { DirectionalPanel, RotationSweep } from './ui/DirectionalPanel';
@@ -26,9 +26,9 @@ const THEMES: Array<{ id: ThemePreference; label: string; tip: string }> = [
 ];
 
 const MODES: Array<{ id: PlaneMode | '3d'; label: string }> = [
+  { id: '3d', label: '3D' },
   { id: 'stress', label: '2D plane stress' },
   { id: 'strain', label: '2D plane strain' },
-  { id: '3d', label: '3D' },
 ];
 
 const OVERLAYS: Array<{ key: keyof Overlays; label: string; tip: string }> = [
@@ -69,13 +69,13 @@ function saveCompleted(s: Set<string>) {
   }
 }
 
-/** A material carried by the URL (a share link), or the default example. */
+/** A material carried by the URL (a share link), or the default example. The Lab opens in 3D. */
 function startState(): { state: LabState; message: string | null } {
-  const fallback = initialState('iso-2a');
+  const fallback = initialState('iso-2a', { space: '3d' });
   const read = typeof location === 'undefined' ? null : decodeFragment(location.hash);
   if (!read) return { state: fallback, message: null };
   if ('error' in read) return { state: fallback, message: `The link could not be opened: ${read.error}` };
-  const state = { ...reducer(fallback, { type: 'loadMaterial', preset: read.loadable.preset, thetaDeg: read.loadable.thetaDeg }), mode: read.mode };
+  const state = { ...reducer(fallback, { type: 'loadMaterial', preset: read.loadable.preset, thetaDeg: read.loadable.thetaDeg }), mode: read.mode, space: read.space };
   return { state, message: read.notes.length ? read.notes.join(' ') : null };
 }
 
@@ -91,6 +91,8 @@ export default function App() {
   const planeData = derived.cls.dimension === 2;
 
   const [view, setView] = useState<'lab' | 'guides'>('lab');
+  // The C and S band can be folded away in the Lab (2D and 3D alike); a guide always shows what its step needs.
+  const [matricesOpen, setMatricesOpen] = useState(true);
   const [run, setRun] = useState<GuideRun | null>(null);
   const [completed, setCompleted] = useState<Set<string>>(loadCompleted);
 
@@ -136,6 +138,7 @@ export default function App() {
   const directionalRight = inGuide && show.has('directional');
   const sweepPanel = inGuide && show.has('sweep');
   const hasRight = show.has('principal') || show.has('kelvin') || show.has('response') || directionalRight || sweepPanel;
+  const bandOpen = inGuide || matricesOpen;
   const unlocked = (kind: 'theta' | 'cut') => !inGuide || (predicted && !!step!.try?.controls?.some((c) => c.kind === kind));
   const thetaUnlocked = unlocked('theta');
   const cutUnlocked = unlocked('cut');
@@ -247,7 +250,7 @@ export default function App() {
         <GuideLibrary guides={GUIDES} completed={completed} onStart={startGuide} />
       ) : !inGuide && state.space === '3d' ? (
         <Suspense fallback={<p className="hint">Loading the 3D view…</p>}>
-          <Lab3D state={state} derived={derived} material={material} dispatch={dispatch} />
+          <Lab3D state={state} derived={derived} material={material} dispatch={dispatch} matricesOpen={matricesOpen} onToggleMatrices={() => setMatricesOpen((o) => !o)} />
         </Suspense>
       ) : (
         <main className={['layout', inGuide ? 'guide-layout' : '', hasRight ? '' : 'no-right', show.has('matrices') ? '' : 'no-band'].join(' ')}>
@@ -281,7 +284,10 @@ export default function App() {
           </aside>
 
           {show.has('matrices') && (
-            <section className="panel band">
+            <section className={bandOpen ? 'panel band' : 'panel band folded'}>
+              {!inGuide && <BandHead open={matricesOpen} onToggle={() => setMatricesOpen((o) => !o)} label="Stiffness C̄ and compliance S̄ of the section" />}
+              {bandOpen && (
+              <>
               <div className="band-left">
               <div className="band-matrices">
                 <MatrixGrid
@@ -318,6 +324,8 @@ export default function App() {
                 />
                 <MatrixLegend />
               </div>
+              </>
+              )}
             </section>
           )}
 

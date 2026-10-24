@@ -11,14 +11,22 @@ interface Props {
   label: string;
 }
 
+/** Beyond this the arithmetic can overflow; no value in the lab needs it. */
+const MAX_MAGNITUDE = 1e12;
+
 /**
  * Typed numeric entry. Values are applied on Enter or blur; invalid input is
- * rejected with a message below the field, never silently replaced.
+ * rejected with a message below the field, never silently replaced. The
+ * message clears once the value or its meaning is replaced from elsewhere
+ * (a preset, a control switch, another material).
  */
 export function NumberField({ value, unit, onCommit, validate, label }: Props) {
   const [text, setText] = useState(fmt(value, 4));
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => setText(fmt(value, 4)), [value]);
+  useEffect(() => {
+    setText(fmt(value, 4));
+    setError(null);
+  }, [value, unit, label]);
 
   const commit = () => {
     const parsed = Number(text.trim().replace(/−/g, '-'));
@@ -27,7 +35,7 @@ export function NumberField({ value, unit, onCommit, validate, label }: Props) {
       setText(fmt(value, 4));
       return;
     }
-    const msg = validate?.(parsed) ?? null;
+    const msg = Math.abs(parsed) > MAX_MAGNITUDE ? 'Too large: enter a magnitude below 10¹².' : (validate?.(parsed) ?? null);
     if (msg) {
       setError(msg);
       setText(fmt(value, 4));

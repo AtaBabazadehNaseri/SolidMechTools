@@ -15,6 +15,10 @@ export interface Viewer {
   readonly camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
   /** Switch between a perspective and an orthographic (parallel) projection, keeping the view direction and size. */
   setPerspective: (on: boolean) => void;
+  /** Back to the starting view and zoom. */
+  home: () => void;
+  /** Look at the centre from the + side of x, y or z (0, 1, 2). */
+  viewFrom: (axis: 0 | 1 | 2) => void;
   render: () => void;
   /** A text label anchored at a 3D point; `className` styles it. */
   label: (text: string, className: string) => CSS2DObject;
@@ -44,7 +48,8 @@ export function createViewer(host: HTMLElement, opts: { distance: number; perspe
   const ortho = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 100);
   let camera: THREE.PerspectiveCamera | THREE.OrthographicCamera = persp;
   // An oblique view that shows the x, y and z faces.
-  persp.position.set(0.62, 0.42, 0.66).normalize().multiplyScalar(opts.distance);
+  const START = new THREE.Vector3(0.62, 0.42, 0.66).normalize();
+  persp.position.copy(START).multiplyScalar(opts.distance);
   scene.add(new THREE.AmbientLight(0xffffff, 1.6));
   const sun = new THREE.DirectionalLight(0xffffff, 1.4);
   sun.position.set(2, 3, 4);
@@ -122,6 +127,54 @@ export function createViewer(host: HTMLElement, opts: { distance: number; perspe
   resize();
   if (opts.perspective === false) setPerspective(false);
 
+  // Camera moves that do not need a pointer: the view buttons and the keyboard.
+  const place = (dir: THREE.Vector3) => {
+    camera.position.copy(dir).normalize().multiplyScalar(opts.distance);
+    ortho.zoom = 1;
+    ortho.updateProjectionMatrix();
+    controls.target.set(0, 0, 0);
+    controls.update();
+    render();
+  };
+  const home = () => place(START.clone());
+  const viewFrom = (axis: 0 | 1 | 2) => place(new THREE.Vector3(axis === 0 ? 1 : 0, axis === 1 ? 1 : 0, axis === 2 ? 1 : 0));
+  const orbit = (dAz: number, dPolar: number) => {
+    const s = new THREE.Spherical().setFromVector3(camera.position.clone().sub(controls.target));
+    s.theta += dAz;
+    s.phi = THREE.MathUtils.clamp(s.phi + dPolar, 1e-3, Math.PI - 1e-3);
+    camera.position.setFromSpherical(s).add(controls.target);
+    controls.update();
+    render();
+  };
+  const zoom = (factor: number) => {
+    if (camera === persp) persp.position.setLength(THREE.MathUtils.clamp(persp.position.length() / factor, controls.minDistance, controls.maxDistance));
+    else {
+      ortho.zoom = THREE.MathUtils.clamp(ortho.zoom * factor, controls.minZoom, controls.maxZoom);
+      ortho.updateProjectionMatrix();
+    }
+    controls.update();
+    render();
+  };
+  const step = Math.PI / 18;
+  const onKey = (e: KeyboardEvent) => {
+    const act: Record<string, () => void> = {
+      ArrowLeft: () => orbit(-step, 0),
+      ArrowRight: () => orbit(step, 0),
+      ArrowUp: () => orbit(0, -step),
+      ArrowDown: () => orbit(0, step),
+      '+': () => zoom(1.15),
+      '=': () => zoom(1.15),
+      '-': () => zoom(1 / 1.15),
+      Home: home,
+      '0': home,
+    };
+    const f = act[e.key];
+    if (!f) return;
+    e.preventDefault();
+    f();
+  };
+  host.addEventListener('keydown', onKey);
+
   // Colours come from the theme tokens; repaint when the theme changes.
   const mo = new MutationObserver(() => {
     opts.onThemeChange?.();
@@ -142,10 +195,13 @@ export function createViewer(host: HTMLElement, opts: { distance: number; perspe
       return camera;
     },
     setPerspective,
+    home,
+    viewFrom,
     render,
     label,
     dispose: () => {
       cancelAnimationFrame(frame);
+      host.removeEventListener('keydown', onKey);
       ro.disconnect();
       mo.disconnect();
       controls.dispose();

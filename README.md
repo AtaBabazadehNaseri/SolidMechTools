@@ -10,12 +10,13 @@ Interactive tools for building physical intuition in solid mechanics.
 
 ![Elasticity Tensor Lab: an off-axis fibre-composite ply shearing under pure tension](public/og-image.png)
 
-A homogeneous specimen cut from a 3D linear elastic material, in plane stress
-or plane strain. Material constants are the controls; the stiffness and
-compliance matrices are read-only consequences. Each in-plane component is
-either **traction-controlled** (stress prescribed) or **displacement-controlled**
-(strain prescribed). This one switch moves the specimen between a free test,
-which reads columns of S̄, and a fully constrained test, which reads columns of C̄.
+A homogeneous specimen of a linear elastic material: a cube in 3D, where the
+Lab opens, or a section in plane stress or plane strain. Material constants are
+the controls; the stiffness and compliance matrices are read-only consequences.
+Each component is either **traction-controlled** (stress prescribed) or
+**displacement-controlled** (strain prescribed). This one switch moves the
+specimen between a free test, which reads columns of S, and a fully constrained
+test, which reads columns of C.
 
 Also in the lab:
 - principal stress and strain axes, and their misalignment;
@@ -28,17 +29,17 @@ Also in the lab:
 
 ### 3D mode
 
-The third button of the mode switch replaces the 2D section with a cube. Each of its six stress components is traction- or displacement-controlled, as in 2D. The 3D view shows:
+The Lab opens in 3D, the first button of the mode switch. Each of the cube's six stress components is traction- or displacement-controlled. The 3D view shows:
 - the deformed cube with its face tractions, split into normal and shear parts (prescribed in blue, reactions in orange);
 - the same overlays as 2D: material axes, material lines, principal stress and strain axes, and a cut plane at any normal, with its traction t = σ·n and its point on the Mohr circles;
-- the full 6×6 C and S, where clicking an entry explains it and runs the one test that isolates it;
+- the full 6×6 C and S, below the cube and the surface, where clicking an entry explains it and runs the one test that isolates it;
 - surfaces over every direction for Young's modulus E(n), linear compressibility β(n), and the minimum and maximum over m ⟂ n of the shear modulus G(n, m) and Poisson's ratio ν(n, m), each of the two switchable, with extremes and a hover readout. The x–y slice of E(n) is drawn in amber: it is the 2D polar plot of E(φ) in plane stress;
 - the stress and strain tensors, the principal stresses and strains in 3D, whether they are coaxial, and the three Mohr circles with the x, y and z faces;
 - the six Kelvin modes of C, with their multiplicities, each of which can be applied to the cube;
 - the 2D section (the x–y mid-plane) inside the cube, with a link back to 2D;
 - the apparent stiffness along x.
 
-Drag to rotate either view; "Perspective" switches both views between perspective and parallel projection. Besides θ about z, the material can be tilted about x and y, or its axes set directly from axis 1 and a vector in the 1–2 plane; in 2D a tilt moves the section plane. The 3D code (three.js) loads only when 3D is first opened. 2D data entered by the user has no 3D behaviour, so 3D and the tilts are disabled for it.
+In 2D and 3D the C and S band is open by default and can be folded away. Drag, or focus a view and use the arrow keys, to rotate it; scroll or + / − zooms. "Reset view" and +x, +y, +z restore the starting view or look along an axis, and "Perspective" switches both views between perspective and parallel projection. Besides θ about z, the material can be tilted about x and y, or its axes set directly from axis 1 and a vector in the 1–2 plane; in 2D a tilt moves the section plane. The 3D code (three.js) loads only when 3D is first opened. 2D data entered by the user has no 3D behaviour, so 3D and the tilts are disabled for it.
 
 ### Your own material
 

@@ -107,3 +107,14 @@ describe('the 3D cut', () => {
     expect(c.strainShear).toBeCloseTo(0, 15);
   });
 });
+
+describe('share links keep the 3D view', () => {
+  it('a link made in 3D opens in 3D, one made in 2D in 2D', () => {
+    const s3 = reducer(initialState('trc-21a'), { type: 'space', space: '3d' });
+    for (const s of [s3, initialState('trc-21a')]) {
+      const r = decodeFragment('#' + encodeFragment(documentOf(s)));
+      if (!r || 'error' in r) throw new Error('no document');
+      expect(r.space).toBe(s.space);
+    }
+  });
+});

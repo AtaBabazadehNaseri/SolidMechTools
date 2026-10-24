@@ -2,7 +2,7 @@
 // (order 11, 22, 33, 23, 13, 12, engineering shear) is traction- or
 // displacement-controlled. Same partitioned solve as the 2D lab, on 6×6.
 
-import { type Mat, type Vec, dot, inverse, matVec, submatrix, symmetricEigen } from './linalg';
+import { type Mat, type Vec, dot, inverse, matMul, matVec, submatrix, symmetricEigen } from './linalg';
 import type { Control } from './plane';
 import { stiffnessVoigtToMandel } from './tensor';
 
@@ -84,6 +84,60 @@ export function principalMisalignment(a: Principal3D, b: Principal3D): number | 
   };
   if (!distinct(a) || !distinct(b)) return null;
   return Math.max(...[0, 1, 2].map((k) => (Math.acos(Math.min(1, Math.abs(dot(a.directions[k], b.directions[k])))) * 180) / Math.PI));
+}
+
+export interface Coaxiality {
+  /** ‖AB − BA‖ / (‖A‖ ‖B‖), Frobenius norms: zero exactly when A and B share a set of principal directions. */
+  commutator: number;
+  coaxial: boolean;
+  /** Largest angle (degrees) between corresponding principal directions, when both sets are unique. */
+  angle: number | null;
+  /** A or B is a multiple of the identity: every direction is principal for it. */
+  isotropic: 'a' | 'b' | null;
+  /**
+   * When a repeated value leaves the directions undetermined: the one unique principal direction n of the tensor
+   * with the repeated value, and the angle (degrees) between n and the other tensor applied to n. The pair is
+   * coaxial exactly when that angle is zero.
+   */
+  witness: { of: 'a' | 'b'; k: number; n: Vec; angle: number } | null;
+}
+
+const frobenius = (M: Mat) => Math.sqrt(M.reduce((s, row) => s + row.reduce((t, v) => t + v * v, 0), 0));
+
+/**
+ * Whether two symmetric tensors (stress and strain) are coaxial, judged by their commutator, so that a repeated
+ * principal value (as in uniaxial stress, σ₂ = σ₃ = 0) does not hide the answer. `tol` bounds the normalized
+ * commutator counted as zero.
+ */
+export function coaxiality(A: Mat, B: Mat, a: Principal3D, b: Principal3D, tol = 1e-6): Coaxiality {
+  const nA = frobenius(A);
+  const nB = frobenius(B);
+  const AB = matMul(A, B);
+  const BA = matMul(B, A);
+  const commutator = nA > 0 && nB > 0 ? frobenius(AB.map((row, i) => row.map((v, j) => v - BA[i][j]))) / (nA * nB) : 0;
+  const coaxial = commutator <= tol;
+  const spread = (p: Principal3D) => Math.max(...p.values) - Math.min(...p.values);
+  const scale = (p: Principal3D) => Math.max(...p.values.map(Math.abs), 1e-300);
+  const isotropic = spread(a) <= 1e-9 * scale(a) ? 'a' : spread(b) <= 1e-9 * scale(b) ? 'b' : null;
+  const simple = (p: Principal3D) =>
+    [0, 1, 2].filter((k) => [0, 1, 2].every((j) => j === k || Math.abs(p.values[k] - p.values[j]) > 1e-9 * scale(p)));
+  const angle = simple(a).length === 3 && simple(b).length === 3 ? principalMisalignment(a, b) : null;
+  let witness: Coaxiality['witness'] = null;
+  if (!coaxial && angle === null) {
+    // A tensor with a repeated value has one unique principal direction n, and the two commute exactly when n
+    // is principal for the other tensor too. How far the other tensor turns n measures the failure.
+    const pick = simple(a).length === 1 ? (['a', a, B] as const) : simple(b).length === 1 ? (['b', b, A] as const) : null;
+    if (pick) {
+      const [of, p, T] = pick;
+      const k = simple(p)[0];
+      const n = p.directions[k];
+      const t = matVec(T, n);
+      const len = Math.hypot(...t);
+      const deg = len <= 1e-12 * frobenius(T) ? 0 : (Math.acos(Math.min(1, Math.abs(dot(n, t)) / len)) * 180) / Math.PI;
+      witness = { of, k, n, angle: deg };
+    }
+  }
+  return { commutator, coaxial, angle, isotropic, witness };
 }
 
 export interface KelvinMode6 {

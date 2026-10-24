@@ -325,7 +325,7 @@ function OrientationEditor({ R, dispatch }: { R: Mat; dispatch: (a: Action) => v
   );
 }
 
-/** Copies a link that reopens the Lab with this material, its orientation, θ and mode (docs/material-format.md). */
+/** Copies a link that reopens the Lab with this material, its orientation, θ and mode (plane stress, plane strain or 3D; docs/material-format.md). */
 function ShareLink({ state }: { state: LabState }) {
   const [copied, setCopied] = useState<string | null>(null);
   const copy = async () => {
@@ -340,7 +340,7 @@ function ShareLink({ state }: { state: LabState }) {
     window.setTimeout(() => setCopied(null), 2500);
   };
   return (
-    <button className="mini" onClick={copy} title="Copy a link that opens the Lab with this material, its orientation, θ and mode">
+    <button className="mini" onClick={copy} title="Copy a link that opens the Lab with this material, its orientation, θ and mode (plane stress, plane strain or 3D)">
       {copied ?? 'Share link'}
     </button>
   );

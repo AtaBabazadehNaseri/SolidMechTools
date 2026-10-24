@@ -1,6 +1,20 @@
 import type { Mat, PlaneConstants, PlaneMode } from '../mechanics';
 import type { MatrixId, Selection } from '../app/lab';
-import { STRAIN6_TEX, STRAIN_TEX, STRESS6_TEX, STRESS_TEX, entryCategory, fmt, toGPa, toPerTPa } from '../app/format';
+import {
+  STRAIN6_TEX,
+  STRAIN6_TXT,
+  STRAIN_TEX,
+  STRAIN_TXT,
+  STRESS6_TEX,
+  STRESS6_TXT,
+  STRESS_TEX,
+  STRESS_TXT,
+  VOIGT_LABEL,
+  entryCategory,
+  fmt,
+  toGPa,
+  toPerTPa,
+} from '../app/format';
 import { Tex } from './Tex';
 
 interface Props {
@@ -38,6 +52,12 @@ export function MatrixGrid({ id, mode, M, pinned, activeCols, selected, onSelect
     : id === 'C'
       ? '\\boldsymbol{\\sigma} = \\bar{\\mathbf{C}}\\,\\boldsymbol{\\varepsilon}'
       : '\\boldsymbol{\\varepsilon} = \\bar{\\mathbf{S}}\\,\\boldsymbol{\\sigma}';
+  // Button names for assistive technology: which entry, what it relates, its value.
+  const rowTxt = solid ? (id === 'C' ? STRESS6_TXT : STRAIN6_TXT) : id === 'C' ? STRESS_TXT : STRAIN_TXT;
+  const colTxt = solid ? (id === 'C' ? STRAIN6_TXT : STRESS6_TXT) : id === 'C' ? STRAIN_TXT : STRESS_TXT;
+  const index = (k: number) => (solid ? String(k + 1) : VOIGT_LABEL[k]);
+  const entryName = (i: number, j: number, v: number) =>
+    `${id}${solid ? '' : ' bar'} ${index(i)} ${index(j)}, ${rowTxt[i]} per ${colTxt[j]}: ${fmt(v, 4, zeroTol)} ${id === 'C' ? 'GPa' : 'per TPa'}`;
   const block = isBlock(id, mode);
   const other = id === 'C' ? 'S' : 'C';
 
@@ -77,7 +97,7 @@ export function MatrixGrid({ id, mode, M, pinned, activeCols, selected, onSelect
                 const cls = ['cell', `cat-${entryCategory(i, j, n)}`, activeCols[j] ? 'active' : '', isSel ? 'selected' : '', isMirror ? 'mirror' : ''].join(' ');
                 return (
                   <td key={j}>
-                    <button className={cls} onClick={() => onSelect({ matrix: id, i, j })}>
+                    <button className={cls} aria-label={entryName(i, j, v)} aria-pressed={isSel} onClick={() => onSelect({ matrix: id, i, j })}>
                       <span className="cell-value">{fmt(v, 4, zeroTol)}</span>
                       {changed && <span className="cell-was">was {fmt(was!, 4, zeroTol)}</span>}
                     </button>
@@ -89,6 +109,19 @@ export function MatrixGrid({ id, mode, M, pinned, activeCols, selected, onSelect
         </tbody>
       </table>
     </div>
+  );
+}
+
+/** The fold of the matrix band: open by default; folding it brings the specimen up. */
+export function BandHead({ open, onToggle, label }: { open: boolean; onToggle: () => void; label: string }) {
+  return (
+    <button className="band-head" aria-expanded={open} onClick={onToggle} title={open ? 'Fold the matrices away' : 'Show the matrices'}>
+      <span className="band-caret" aria-hidden>
+        {open ? '▾' : '▸'}
+      </span>
+      {label}
+      {!open && <span className="band-hidden">hidden, click to show</span>}
+    </button>
   );
 }
 

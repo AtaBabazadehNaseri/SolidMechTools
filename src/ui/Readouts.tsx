@@ -45,12 +45,12 @@ export function Readouts({ state, derived, dispatch, ladder = true }: Props) {
                   <Tex>{STRESS_TEX[i]}</Tex> / <Tex>{STRAIN_TEX[i]}</Tex>
                 </th>
                 <td className={applied ? 'val applied' : 'val reaction'}>
-                  {fmt(response.stress[i], 4, sTol)}
+                  {fmt(response.stress[i], 4, applied ? 0 : sTol)}
                   <span className="role">{applied ? 'prescribed' : 'reaction'}</span>
                 </td>
                 {pin && <td className="val pinned-col">{fmt(pin.response.stress[i], 4, sTol)}</td>}
                 <td className={applied ? 'val' : 'val held'}>
-                  {fmt(toMilli(response.strain[i]), 4, toMilli(eTol))}
+                  {fmt(toMilli(response.strain[i]), 4, applied ? toMilli(eTol) : 0)}
                   <span className="role">{applied ? 'response' : 'prescribed'}</span>
                 </td>
                 {pin && <td className="val pinned-col">{fmt(toMilli(pin.response.strain[i]), 4, toMilli(eTol))}</td>}

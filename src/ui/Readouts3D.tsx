@@ -28,11 +28,11 @@ export function Readouts3D({ state, derived }: { state: LabState; derived: LabDe
                   <Tex>{STRESS6_TEX[i]}</Tex> / <Tex>{STRAIN6_TEX[i]}</Tex>
                 </th>
                 <td className={applied ? 'val applied' : 'val reaction'}>
-                  {fmt(s, 4, sTol)}
+                  {fmt(s, 4, applied ? 0 : sTol)}
                   <span className="role">{applied ? 'prescribed' : 'reaction'}</span>
                 </td>
                 <td className={applied ? 'val' : 'val held'}>
-                  {fmt(toMilli(response.strain[i]), 4, toMilli(eTol))}
+                  {fmt(toMilli(response.strain[i]), 4, applied ? toMilli(eTol) : 0)}
                   <span className="role">{applied ? 'response' : 'prescribed'}</span>
                 </td>
               </tr>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type Mat, principalMisalignment, strainTensor, stressTensor } from '../mechanics';
+import { type Coaxiality, type Mat, coaxiality, strainTensor, stressTensor } from '../mechanics';
 import type { Cut3, LabDerived } from '../app/lab';
 import { fmt, toMilli } from '../app/format';
 
@@ -17,7 +17,7 @@ export function Principal3DPanel({ derived, cut }: { derived: LabDerived; cut: C
   const [kind, setKind] = useState<'stress' | 'strain'>('stress');
   const { response, principalStress: ps, principalStrain: pe } = derived.solid;
   const loaded = response.stress.some((v) => v !== 0) || response.strain.some((v) => v !== 0);
-  const gap = principalMisalignment(ps, pe);
+  const cx = coaxiality(stressTensor(response.stress), strainTensor(response.strain), ps, pe);
   const sTol = 1e-9 * Math.max(...response.stress.map(Math.abs), 1e-300);
   const eTol = 1e-9 * Math.max(...response.strain.map(Math.abs), 1e-300);
   const isStress = kind === 'stress';
@@ -48,15 +48,7 @@ export function Principal3DPanel({ derived, cut }: { derived: LabDerived; cut: C
               ))}
             </dd>
           </dl>
-          <p className={gap !== null && gap > 0.05 ? 'coax warn' : 'coax'}>
-            {!loaded
-              ? 'Nothing is loaded yet.'
-              : gap === null
-                ? 'A principal value is repeated, so its directions are not unique and coaxiality cannot be judged from them.'
-                : gap <= 0.05
-                  ? 'Stress and strain are coaxial: their principal directions coincide.'
-                  : `Stress and strain are not coaxial: their principal directions differ by up to ${fmt(gap, 3)}°.`}
-          </p>
+          <p className={loaded && !cx.coaxial ? 'coax warn' : 'coax'}>{loaded ? coaxText(cx) : 'Nothing is loaded yet.'}</p>
         </div>
         <div>
           <div className="seg small-seg">
@@ -86,6 +78,28 @@ export function Principal3DPanel({ derived, cut }: { derived: LabDerived; cut: C
       </p>
     </section>
   );
+}
+
+/**
+ * The coaxiality verdict in words. It rests on σε = εσ, so a repeated principal value (σ₂ = σ₃ = 0 in uniaxial
+ * stress) does not prevent it; only the comparison of individual directions needs unique ones.
+ */
+function coaxText(cx: Coaxiality): string {
+  const name = (t: 'a' | 'b') => (t === 'a' ? 'stress' : 'strain');
+  if (cx.coaxial) {
+    if (cx.isotropic)
+      return `Stress and strain are coaxial, trivially: the ${name(cx.isotropic)} is the same in every direction, so every direction is principal for it.`;
+    if (cx.angle !== null) return 'Stress and strain are coaxial: their principal directions coincide.';
+    return 'Stress and strain are coaxial: they share a set of principal directions (σε = εσ). A repeated principal value leaves the directions in its plane free, so the lists above may show different but equivalent choices.';
+  }
+  if (cx.angle !== null) return `Stress and strain are not coaxial: their principal directions differ by up to ${fmt(cx.angle, 3)}°.`;
+  if (cx.witness) {
+    const w = cx.witness;
+    const sym = w.of === 'a' ? 'σ' : 'ε';
+    const other = w.of === 'a' ? 'ε' : 'σ';
+    return `Stress and strain are not coaxial (σε ≠ εσ). The direction of ${sym}${SUB[w.k]}, ${vec(w.n)}, is not principal for the ${name(w.of === 'a' ? 'b' : 'a')}: ${other}·n points ${fmt(w.angle, 3)}° away from n. A repeated principal value leaves the other directions undetermined, so they are not compared one by one.`;
+  }
+  return 'Stress and strain are not coaxial (σε ≠ εσ).';
 }
 
 function Mohr3D({ T, p, isStress, cut }: { T: Mat; p: number[]; isStress: boolean; cut: { sn: number; tau: number } | null }) {

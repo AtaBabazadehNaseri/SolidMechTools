@@ -22,7 +22,7 @@ The format is universal because it is explicit. Every choice that has more than 
 | `units` | yes | Stress unit for moduli and stiffness entries: `Pa`, `kPa`, `MPa`, `GPa`, `TPa`, `psi`, `ksi` or `Msi`. Compliance entries are in 1/`units`. Dimensionless ratios are unaffected. |
 | `material` | yes | See below. |
 | `orientation` | no | The material axes 1, 2, 3 written in the specimen axes x, y, z. |
-| `view` | no | Lab state to restore: `thetaDeg` (number), `mode` (`"stress"` or `"strain"`). |
+| `view` | no | Lab state to restore: `thetaDeg` (number), `mode` (`"stress"` or `"strain"`), `space` (`"2d"` or `"3d"`; 3D needs 3D data). |
 
 ## `material`, constants form
 
@@ -90,7 +90,7 @@ Each constant is a compliance quantity from a test with one stress acting alone,
     "constants": { "E1": 180, "E2": 10, "E3": 10, "nu12": 0.3, "nu13": 0.3, "nu23": 0.4, "G23": 3.571, "G13": 7, "G12": 7 }
   },
   "orientation": { "axis1": [0.866, 0.5, 0], "axis2": [-0.5, 0.866, 0], "axis3": [0, 0, 1] },
-  "view": { "thetaDeg": 0, "mode": "stress" }
+  "view": { "thetaDeg": 0, "mode": "stress", "space": "2d" }
 }
 ```
 

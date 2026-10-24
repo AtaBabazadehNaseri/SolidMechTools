@@ -12,6 +12,7 @@ import {
 } from '../mechanics';
 import { fmt, toGPa, toPerTPa } from '../app/format';
 import { type Viewer, clearGroup, createViewer, cssColor } from './three/viewer';
+import { KEYS_HINT, ViewButtons } from './ViewButtons';
 
 interface Props {
   /** 3D compliance in specimen axes. */
@@ -301,7 +302,12 @@ export function Surface3D({ S6, R, perspective, materialAxes }: Props) {
       {failed ? (
         <p className="hint">This browser could not start WebGL, which the 3D view needs.</p>
       ) : (
-        <div ref={host} className="three-host" role="img" aria-label={`Surface of ${def.title} over all directions; drag to rotate`} />
+        <>
+          <div className="view-row">
+            <ViewButtons viewer={() => viewer.current} />
+          </div>
+          <div ref={host} className="three-host" tabIndex={0} role="application" aria-label={`Surface of ${def.title} over all directions. ${KEYS_HINT}`} />
+        </>
       )}
       {def.pair && (
         <div className="view-bar">
@@ -331,7 +337,7 @@ export function Surface3D({ S6, R, perspective, materialAxes }: Props) {
             <b>{def.pair ? `${def.label} from ${f(hover.lo)} to ${f(hover.hi)} over m ⟂ n` : `${def.label} = ${f(hover.lo)}`}</b>
           </>
         ) : (
-          <span className="muted">Point at the surface to read the value along that direction. Drag to rotate.</span>
+          <span className="muted">Point at the surface to read the value along that direction. {KEYS_HINT}</span>
         )}
       </p>
       {Math.abs(ext.max.value - ext.min.value) <= 1e-6 * Math.max(Math.abs(ext.max.value), 1e-300) ? (

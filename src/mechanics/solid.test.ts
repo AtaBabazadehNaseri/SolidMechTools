@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { inverse, matVec } from './linalg';
 import { PRESETS, SYMMETRY_CLASSES } from './materials';
 import { IN_PLANE, OUT_OF_PLANE, type Control, outOfPlane, planeCompliance, solveMixed } from './plane';
-import { apparentStiffnessN, principal3D, principalMisalignment, solveMixedN, strainTensor, stressTensor } from './solid';
+import { apparentStiffnessN, coaxiality, kelvinModes3D, principal3D, principalMisalignment, solveMixedN, strainTensor, stressTensor } from './solid';
 import { rotateComplianceVoigt, rotationAxisAngle } from './tensor';
 import { youngModulus3D } from './anisotropy';
 
@@ -82,5 +82,46 @@ describe('the 3D cube under mixed control', () => {
     expect(principalMisalignment(principal3D(stressTensor(r.stress)), principal3D(strainTensor(r.strain)))).toBeLessThan(1e-4); // degrees; arccos near 1 amplifies round-off
     const tri = solveMixedN(S6, { control: all('stress'), value: [10, 3, -2, 1, 0.5, 4] });
     expect(principalMisalignment(principal3D(stressTensor(tri.stress)), principal3D(strainTensor(tri.strain)))).toBeGreaterThan(1);
+  });
+});
+
+describe('coaxiality by the commutator', () => {
+  const judge = (S6: number[][], load: { control: Control[]; value: number[] }) => {
+    const r = solveMixedN(S6, load);
+    const T = stressTensor(r.stress);
+    const E = strainTensor(r.strain);
+    return { r, c: coaxiality(T, E, principal3D(T), principal3D(E)) };
+  };
+  const I = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1],
+  ];
+  const uniaxial = { control: all('stress'), value: [50, 0, 0, 0, 0, 0] };
+
+  it('triclinic under uniaxial stress: σ₂ = σ₃ = 0 is repeated, yet the pair is judged not coaxial, with x as the witness', () => {
+    const { r, c } = judge(S('trc-21a', I), uniaxial);
+    expect(c.coaxial).toBe(false);
+    expect(c.angle).toBeNull();
+    expect(c.witness?.of).toBe('a');
+    expect(Math.abs(c.witness!.n[0])).toBeCloseTo(1, 12);
+    // ε·x = (εxx, γxy/2, γxz/2): its angle from x.
+    const [exx, , , , gxz, gxy] = r.strain;
+    expect(c.witness!.angle).toBeCloseTo((Math.atan(Math.hypot(gxy / 2, gxz / 2) / Math.abs(exx)) * 180) / Math.PI, 9);
+  });
+
+  it('isotropic under uniaxial stress, any material under hydrostatic pressure, and every Kelvin mode: coaxial', () => {
+    expect(judge(S('iso-2a'), uniaxial).c.coaxial).toBe(true);
+    const hydro = judge(S('trc-21a'), { control: all('stress'), value: [-5, -5, -5, 0, 0, 0] }).c;
+    expect(hydro.coaxial).toBe(true);
+    expect(hydro.isotropic).toBe('a');
+    const C6 = inverse(S('trc-21a'));
+    for (const m of kelvinModes3D(C6)) expect(judge(S('trc-21a'), { control: all('strain'), value: m.strain }).c.coaxial).toBe(true);
+  });
+
+  it('with all principal values distinct it reports the misalignment angle', () => {
+    const { c } = judge(S('trc-21a'), { control: all('stress'), value: [50, -20, 10, 0, 0, 0] });
+    expect(c.coaxial).toBe(false);
+    expect(c.angle).toBeGreaterThan(0.05);
   });
 });

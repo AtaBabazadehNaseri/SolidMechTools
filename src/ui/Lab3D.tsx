@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { type Action, type LabDerived, type LabState, type MaterialDerived, type Overlays, type View3, cut3Of, entryExperiment3 } from '../app/lab';
 import { fmt } from '../app/format';
 import { MaterialPanel } from './MaterialPanel';
-import { MatrixGrid, MatrixLegend, SolidConstantsStrip } from './MatrixGrid';
+import { BandHead, MatrixGrid, MatrixLegend, SolidConstantsStrip } from './MatrixGrid';
 import { EntryInfo3D } from './EntryInfo3D';
 import { Specimen3D } from './Specimen3D';
 import { LoadPanel3D, MagnificationControl } from './LoadPanel';
@@ -16,6 +16,8 @@ interface Props {
   derived: LabDerived;
   material: MaterialDerived;
   dispatch: (a: Action) => void;
+  matricesOpen: boolean;
+  onToggleMatrices: () => void;
 }
 
 const VIEW: Array<{ key: keyof View3; label: string; tip: string }> = [
@@ -41,7 +43,7 @@ function lineAxesFor(classId: LabState['classId']): number[] {
 }
 
 /** The 3D mode: the cube specimen with all six components, the full C and S, and E(n). */
-export function Lab3D({ state, derived, material, dispatch }: Props) {
+export function Lab3D({ state, derived, material, dispatch, matricesOpen, onToggleMatrices }: Props) {
   const { response, principalStress, principalStrain } = derived.solid;
   const ref = (v: number[]) => Math.max(...v.map(Math.abs), 1e-300);
   const nonzero = (v: number, r: number) => Math.abs(v) > 1e-12 * r;
@@ -60,42 +62,8 @@ export function Lab3D({ state, derived, material, dispatch }: Props) {
         <MaterialPanel state={state} derived={derived} material={material} dispatch={dispatch} />
       </aside>
 
-      <section className="panel band">
-        <div className="band-left">
-          <div className="band-matrices">
-            <MatrixGrid
-              id="C"
-              mode={state.mode}
-              M={derived.C6}
-              pinned={null}
-              activeCols={response.strain.map((v) => nonzero(v, ref(response.strain)))}
-              selected={state.selected}
-              onSelect={select}
-            />
-            <MatrixGrid
-              id="S"
-              mode={state.mode}
-              M={derived.S6}
-              pinned={null}
-              activeCols={response.stress.map((v) => nonzero(v, ref(response.stress)))}
-              selected={state.selected}
-              onSelect={select}
-            />
-          </div>
-          <SolidConstantsStrip S6={derived.S6} />
-        </div>
-        <div className="band-info">
-          <EntryInfo3D
-            selection={state.selected}
-            S6={derived.S6}
-            C6={derived.C6}
-            onRun={() => state.selected && dispatch({ type: 'loadCase3', load: entryExperiment3(state.selected, state.scales) })}
-          />
-          <MatrixLegend />
-        </div>
-      </section>
-
-      <div className="col-center">
+      {/* On top: the cube and, beside it when three columns fit, the directional surface. */}
+      <div className="cube-area">
         <section className="panel specimen-panel">
           <div className="overlay-bar">
             {OVERLAYS.map((o) => (
@@ -153,13 +121,59 @@ export function Lab3D({ state, derived, material, dispatch }: Props) {
             </p>
           )}
         </section>
+      </div>
+      <div className="surface-area">
+        <Surface3D S6={derived.S6} R={derived.R} perspective={state.view3.perspective} materialAxes={state.overlays.materialAxes} />
+      </div>
+
+      {/* The matrices, one level below the cube; they can be folded away. */}
+      <section className={matricesOpen ? 'panel band' : 'panel band folded'}>
+        <BandHead open={matricesOpen} onToggle={onToggleMatrices} label="Stiffness C and compliance S (6×6)" />
+        {matricesOpen && (
+          <>
+            <div className="band-left">
+              <div className="band-matrices">
+                <MatrixGrid
+                  id="C"
+                  mode={state.mode}
+                  M={derived.C6}
+                  pinned={null}
+                  activeCols={response.strain.map((v) => nonzero(v, ref(response.strain)))}
+                  selected={state.selected}
+                  onSelect={select}
+                />
+                <MatrixGrid
+                  id="S"
+                  mode={state.mode}
+                  M={derived.S6}
+                  pinned={null}
+                  activeCols={response.stress.map((v) => nonzero(v, ref(response.stress)))}
+                  selected={state.selected}
+                  onSelect={select}
+                />
+              </div>
+              <SolidConstantsStrip S6={derived.S6} />
+            </div>
+            <div className="band-info">
+              <EntryInfo3D
+                selection={state.selected}
+                S6={derived.S6}
+                C6={derived.C6}
+                onRun={() => state.selected && dispatch({ type: 'loadCase3', load: entryExperiment3(state.selected, state.scales) })}
+              />
+              <MatrixLegend />
+            </div>
+          </>
+        )}
+      </section>
+
+      <div className="col-center">
         <LoadPanel3D state={state} dispatch={dispatch} />
-        {/* The cube's response sits under its boundary conditions, which also balances the two columns. */}
+        {/* The cube's response sits under its boundary conditions. */}
         <Readouts3D state={state} derived={derived} />
       </div>
 
       <div className="col-right">
-        <Surface3D S6={derived.S6} R={derived.R} perspective={state.view3.perspective} materialAxes={state.overlays.materialAxes} />
         <Principal3DPanel derived={derived} cut={cut} />
         <Kelvin3DPanel state={state} derived={derived} dispatch={dispatch} />
       </div>

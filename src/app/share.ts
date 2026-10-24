@@ -32,7 +32,7 @@ export interface MaterialDocument {
   units: Unit;
   material: Record<string, unknown>;
   orientation?: { axis1: number[]; axis2: number[]; axis3: number[] };
-  view?: { thetaDeg?: number; mode?: 'stress' | 'strain' };
+  view?: { thetaDeg?: number; mode?: 'stress' | 'strain'; space?: '2d' | '3d' };
 }
 
 /** The current material in the constants form, with its orientation and view. */
@@ -56,14 +56,14 @@ export function documentOf(s: LabState): MaterialDocument {
       constants,
     },
     ...(plane ? {} : { orientation: { axis1: a1, axis2: a2, axis3: a3 } }),
-    view: { thetaDeg: s.thetaDeg, mode: s.mode },
+    view: { thetaDeg: s.thetaDeg, mode: s.mode, space: s.space },
   };
 }
 
 // ---------------------------------------------------------------------------
 // Reading
 
-export type Read = { loadable: Loadable; mode: 'stress' | 'strain'; notes: string[] } | { error: string };
+export type Read = { loadable: Loadable; mode: 'stress' | 'strain'; space: '2d' | '3d'; notes: string[] } | { error: string };
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
 
@@ -140,7 +140,9 @@ export function readDocument(doc: unknown): Read {
   });
   if (dimension === 3) loadable.thetaDeg = thetaDeg;
   const mode = dimension === 2 ? plane : d.view?.mode === 'strain' ? 'strain' : 'stress';
-  return { loadable, mode, notes: a.notes };
+  // 2D data has no 3D view.
+  const space = dimension === 3 && d.view?.space === '3d' ? '3d' : '2d';
+  return { loadable, mode, space, notes: a.notes };
 }
 
 // ---------------------------------------------------------------------------

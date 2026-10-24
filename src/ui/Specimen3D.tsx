@@ -4,6 +4,7 @@ import { type Control, type Mat, type Principal3D, strainTensor, stressTensor } 
 import type { Cut3, Overlays } from '../app/lab';
 import { fmt } from '../app/format';
 import { type Viewer, arrow, clearGroup, createViewer, cssColor } from './three/viewer';
+import { KEYS_HINT, ViewButtons } from './ViewButtons';
 
 interface Props {
   stress: number[];
@@ -318,7 +319,18 @@ export function Specimen3D(p: Props) {
       {failed ? (
         <p className="hint">This browser could not start WebGL, which the 3D view needs.</p>
       ) : (
-        <div ref={host} className="three-host" role="img" aria-label="3D specimen: reference cube (dashed) and the deformed cube with its face tractions; drag to rotate" />
+        <>
+          <div className="view-row">
+            <ViewButtons viewer={() => viewer.current} />
+          </div>
+          <div
+            ref={host}
+            className="three-host"
+            tabIndex={0}
+            role="application"
+            aria-label={`3D specimen: reference cube (dashed) and the deformed cube with its face tractions. ${KEYS_HINT}`}
+          />
+        </>
       )}
       <div className="specimen3d-foot">
         <span className="lg-applied">prescribed traction</span>
@@ -329,7 +341,7 @@ export function Specimen3D(p: Props) {
         {p.cut && <span className="lg-stress">cut plane and its traction t = σ·n</span>}
         <span className="muted">
           Displacements ×{fmt(k, 3)}
-          {k < p.magnification ? ' (capped so the cube does not fold)' : ''}: display only. Drag to rotate, scroll to zoom.
+          {k < p.magnification ? ' (capped so the cube does not fold)' : ''}: display only. {KEYS_HINT}
         </span>
       </div>
     </div>
