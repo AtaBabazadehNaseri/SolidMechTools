@@ -1,4 +1,4 @@
-// Deferred: the former Level 2 guide "Can an anisotropic crystal look isotropic?" (copper (111), quartz).
+// Deferred: the former Level 2 guide "Can an anisotropic crystal look isotropic?" (a cubic crystal on (111), a trigonal crystal).
 // Its out-of-plane steps need the 3D mode; bring it back, in the five-phase step format of
 // src/guides/types.ts, once that mode exists. Not compiled or bundled.
 
@@ -18,14 +18,14 @@ export const looksIsotropic: Guide = {
   id: 'looks-isotropic',
   track: 'Level 2',
   title: 'Can an anisotropic crystal look isotropic?',
-  summary: 'Copper on its (111) plane and quartz on its basal plane: isotropic by every in-plane measure, yet stretching them shears them out of the plane.',
+  summary: 'A cubic crystal on its (111) plane and a trigonal crystal on its basal plane: isotropic by every in-plane measure, yet stretching them shears them out of the plane.',
   steps: [
     {
-      title: 'Copper on its cube face',
+      title: 'A cubic crystal on its cube face',
       body: [
-        'A copper single crystal, cut on its cube face (001). Its E(φ) is a four-lobed rosette: 67 GPa along the cube edges and 130 GPa along the face diagonals. Copper is one of the more anisotropic metals (Zener ratio ≈ 3.2).',
+        'A cubic crystal, cut on its cube face (001). Its E(φ) is a four-lobed rosette: about 71 GPa along the cube edges and 134 GPa along the face diagonals (Zener ratio 3).',
       ],
-      setup: (s) => fresh('cubic-cu', s, axes),
+      setup: (s) => fresh('cub-3a', s, axes),
       show: ['directional'],
     },
     {
@@ -47,7 +47,7 @@ export const looksIsotropic: Guide = {
         solve: (s) => ({ ...s, section: 'n111' }),
       },
       explain: [
-        'A circle: in the (111) plane copper is isotropic, with E = 130 GPa in every direction. In 2D the anisotropic part of the elasticity tensor varies only as cos 2θ and cos 4θ, and a 3-fold axis normal to the plane allows neither.',
+        'A circle: in the (111) plane the crystal is isotropic, with E = 134 GPa in every direction. In 2D the anisotropic part of the elasticity tensor varies only as cos 2θ and cos 4θ, and a 3-fold axis normal to the plane allows neither.',
       ],
     },
     {
@@ -101,11 +101,11 @@ export const looksIsotropic: Guide = {
       ],
     },
     {
-      title: 'Quartz, and plane strain',
+      title: 'A trigonal crystal, and plane strain',
       body: [
-        'α-quartz has a 3-fold axis normal to its basal plane, which is the section shown. It too is isotropic in plane and shears out of plane under in-plane tension.',
+        'This trigonal crystal has a 3-fold axis normal to its basal plane, which is the section shown. It too is isotropic in plane and shears out of plane under in-plane tension.',
       ],
-      setup: (s) => fresh('trig-quartz', s, axes),
+      setup: (s) => fresh('trg-6a', s, axes),
       show: ['directional', 'response'],
       predict: {
         question: 'Switch to plane strain. Which reactions appear besides σzz?',
@@ -125,7 +125,7 @@ export const looksIsotropic: Guide = {
         solve: (s) => ({ ...s, mode: 'strain' }),
       },
       explain: [
-        'Plane strain holds γyz = γxz = 0, so the three-fold coupling now appears as reaction shear stresses. At this orientation only τyz appears: the pull runs along a 2-fold axis of quartz, and that symmetry forbids τxz. Rotate the crystal and τxz appears as well.',
+        'Plane strain holds γyz = γxz = 0, so the three-fold coupling now appears as reaction shear stresses. At this orientation only τyz appears: the pull runs along a 2-fold axis of the crystal, and that symmetry forbids τxz. Rotate the crystal and τxz appears as well.',
         'A plane-strain model of such a crystal carries these reactions implicitly. That is right if the real body is restrained that way. If it is not, use a formulation that explicitly allows out-of-plane shear deformation, or a 3D model. Note that some generalized-plane-strain formulations still hold γyz = γxz = 0.',
       ],
     },

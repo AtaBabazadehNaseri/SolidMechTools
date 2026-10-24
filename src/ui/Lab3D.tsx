@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { type Action, type LabDerived, type LabState, type MaterialDerived, entryExperiment3 } from '../app/lab';
+import { useMemo } from 'react';
+import { type Action, type LabDerived, type LabState, type MaterialDerived, type Overlays, type View3, cut3Of, entryExperiment3 } from '../app/lab';
+import { fmt } from '../app/format';
 import { MaterialPanel } from './MaterialPanel';
 import { MatrixGrid, MatrixLegend, SolidConstantsStrip } from './MatrixGrid';
 import { EntryInfo3D } from './EntryInfo3D';
@@ -17,13 +18,41 @@ interface Props {
   dispatch: (a: Action) => void;
 }
 
+const VIEW: Array<{ key: keyof View3; label: string; tip: string }> = [
+  { key: 'perspective', label: 'Perspective', tip: 'Perspective projection; off gives a parallel (orthographic) projection, in which parallel edges stay parallel. Applies to both 3D views.' },
+  { key: 'section', label: '2D section (x–y plane)', tip: 'The x–y mid-plane of the cube: the plane the 2D lab cuts' },
+];
+
+// The same overlays as the 2D specimen, with the same colours and state.
+const OVERLAYS: Array<{ key: keyof Overlays; label: string; tip: string }> = [
+  { key: 'materialAxes', label: 'Material axes', tip: 'Teal arrows: the material axes 1, 2, 3, carried by the (magnified) deformation. Also drawn in the surface view.' },
+  { key: 'materialLines', label: 'Material lines', tip: 'Straight lines along material axis 1 (all three cube axes for a cubic material) through the cube, carried by the deformation.' },
+  { key: 'principalStress', label: 'Principal stress', tip: 'The three principal stress directions, with lengths in proportion to the values; heads outward for tension, inward for compression.' },
+  { key: 'principalStrain', label: 'Principal strain', tip: 'The three principal strain directions (dashed); compare with the stress axes to see coaxiality.' },
+  { key: 'cut', label: 'Cut plane', tip: 'A plane through the centre of the cube, its normal n and the traction t = σ·n on it; also a point on the Mohr circles.' },
+];
+
+/** Material axes along which lines are drawn: none for an isotropic material, all equivalent axes for cubic and tetragonal. */
+function lineAxesFor(classId: LabState['classId']): number[] {
+  if (classId === 'isotropic') return [];
+  if (classId === 'cubic') return [0, 1, 2];
+  if (classId === 'tetragonal') return [0, 1];
+  return [0];
+}
+
 /** The 3D mode: the cube specimen with all six components, the full C and S, and E(n). */
 export function Lab3D({ state, derived, material, dispatch }: Props) {
-  const { response } = derived.solid;
+  const { response, principalStress, principalStrain } = derived.solid;
   const ref = (v: number[]) => Math.max(...v.map(Math.abs), 1e-300);
   const nonzero = (v: number, r: number) => Math.abs(v) > 1e-12 * r;
   const select = (selection: NonNullable<LabState['selected']>) => dispatch({ type: 'select', selection });
-  const [section, setSection] = useState(true);
+  const lineAxes = useMemo(() => lineAxesFor(state.classId), [state.classId]);
+  const cut = useMemo(
+    () => (state.overlays.cut ? cut3Of(response.stress, response.strain, state.cut3Deg) : null),
+    [state.overlays.cut, response.stress, response.strain, state.cut3Deg],
+  );
+  const [az, el] = state.cut3Deg;
+  const sTol = 1e-9 * ref(response.stress);
 
   return (
     <main className="layout lab3d">
@@ -68,17 +97,47 @@ export function Lab3D({ state, derived, material, dispatch }: Props) {
 
       <div className="col-center">
         <section className="panel specimen-panel">
+          <div className="overlay-bar">
+            {OVERLAYS.map((o) => (
+              <label key={o.key} className={`toggle toggle-${o.key}`} title={o.tip}>
+                <input type="checkbox" checked={state.overlays[o.key]} onChange={(e) => dispatch({ type: 'overlay', key: o.key, on: e.target.checked })} />
+                {o.label}
+              </label>
+            ))}
+          </div>
           <div className="section-row">
-            <label className="toggle toggle-section" title="The x–y mid-plane of the cube: the plane the 2D lab cuts">
-              <input type="checkbox" checked={section} onChange={(e) => setSection(e.target.checked)} />
-              2D section (x–y plane)
-            </label>
+            {VIEW.map((o) => (
+              <label key={o.key} className={`toggle toggle-${o.key}`} title={o.tip}>
+                <input type="checkbox" checked={state.view3[o.key]} onChange={(e) => dispatch({ type: 'view3', key: o.key, on: e.target.checked })} />
+                {o.label}
+              </label>
+            ))}
             <button className="link" onClick={() => dispatch({ type: 'space', space: '2d' })}>
               Open this section in 2D →
             </button>
           </div>
+          {cut && (
+            <div className="cut3-controls">
+              <span>Normal azimuth</span>
+              <input type="range" min={-180} max={180} step={1} value={az} onChange={(e) => dispatch({ type: 'cut3', deg: [Number(e.target.value), el] })} aria-label="Azimuth of the cut normal from x" />
+              <span className="theta-value">{az}°</span>
+              <span>Normal elevation</span>
+              <input type="range" min={-90} max={90} step={1} value={el} onChange={(e) => dispatch({ type: 'cut3', deg: [az, Number(e.target.value)] })} aria-label="Elevation of the cut normal towards z" />
+              <span className="theta-value">{el}°</span>
+              <span className="cut3-read">
+                n = ({cut.n.map((x) => fmt(x, 3, 1e-9)).join(', ')}) · t = σ·n = ({cut.traction.map((x) => fmt(x, 4, sTol)).join(', ')}) MPa · σn ={' '}
+                {fmt(cut.normal, 4, sTol)}, |τ| = {fmt(cut.shear, 4, sTol)} MPa
+              </span>
+            </div>
+          )}
           <Specimen3D
-            section={section}
+            section={state.view3.section}
+            perspective={state.view3.perspective}
+            overlays={state.overlays}
+            lineAxes={lineAxes}
+            principalStress={principalStress}
+            principalStrain={principalStrain}
+            cut={cut}
             stress={response.stress}
             strain={response.strain}
             control={state.load3.control}
@@ -87,7 +146,7 @@ export function Lab3D({ state, derived, material, dispatch }: Props) {
             stressRef={state.scales.stress}
           />
           <MagnificationControl state={state} dispatch={dispatch} maxStrain={ref(response.strain)} />
-          {section && (
+          {state.view3.section && (
             <p className="hint">
               The 2D lab works on this mid-plane. Plane stress leaves the faces normal to z free (σzz = τyz = τxz = 0); plane strain
               holds them (εzz = γyz = γxz = 0), which is the cube’s “Plane strain” test.
@@ -95,12 +154,13 @@ export function Lab3D({ state, derived, material, dispatch }: Props) {
           )}
         </section>
         <LoadPanel3D state={state} dispatch={dispatch} />
+        {/* The cube's response sits under its boundary conditions, which also balances the two columns. */}
+        <Readouts3D state={state} derived={derived} />
       </div>
 
       <div className="col-right">
-        <Surface3D S6={derived.S6} R={derived.R} />
-        <Readouts3D state={state} derived={derived} />
-        <Principal3DPanel derived={derived} />
+        <Surface3D S6={derived.S6} R={derived.R} perspective={state.view3.perspective} materialAxes={state.overlays.materialAxes} />
+        <Principal3DPanel derived={derived} cut={cut} />
         <Kelvin3DPanel state={state} derived={derived} dispatch={dispatch} />
       </div>
     </main>

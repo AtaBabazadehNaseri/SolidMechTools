@@ -1853,6 +1853,20 @@ fieldset.plain:disabled {
 .small-screen-note {
   display: none;
 }
+.app-foot {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 980px;
+}
+.app-foot p {
+  margin: 0 0 6px;
+}
+.app-foot a {
+  color: inherit;
+}
 @media (max-width: 860px) {
   .small-screen-note {
     display: block;
@@ -2149,6 +2163,8 @@ fieldset.plain:disabled {
   font-family: var(--mono);
   pointer-events: none;
   user-select: none;
+  /* A halo in the panel colour keeps labels readable over any surface colour. */
+  text-shadow: 0 0 2px var(--panel), 0 0 3px var(--panel), 0 0 4px var(--panel);
 }
 .three-label.axis {
   color: var(--muted);
@@ -2177,6 +2193,16 @@ fieldset.plain:disabled {
 .lg-material {
   color: var(--material);
 }
+.lg-stress,
+.three-label.cut {
+  color: var(--stress);
+}
+.lg-strain {
+  color: var(--strain);
+}
+.three-label.cut {
+  font-weight: 600;
+}
 .surface3d .three-host {
   height: 380px;
 }
@@ -2192,23 +2218,72 @@ fieldset.plain:disabled {
   flex: 1;
   height: 10px;
   border-radius: 999px;
-  background: linear-gradient(90deg, var(--surface-lo), var(--surface-hi));
+  background: linear-gradient(90deg, #355f8d, #2a788e, #21918c, #22a884, #44bf70, #7ad151, #bddf26, #fde725);
 }
 .surface-read {
   font-size: 13px;
   min-height: 20px;
   margin: 6px 0;
 }
+/* A 6×6 matrix needs about 440 px: C and S sit side by side when there is room and stack when there is not;
+   a matrix scrolls rather than squeeze its cells until the numbers overlap. */
+/* The entry explanation sits beside the matrices when both fit, and wraps below them otherwise. */
+.lab3d .band {
+  display: flex;
+  flex-wrap: wrap;
+}
+.lab3d .band-left {
+  flex: 1 1 900px;
+}
+.lab3d .band-info {
+  flex: 1 1 260px;
+}
+.lab3d .band-matrices {
+  grid-template-columns: repeat(auto-fit, minmax(min(440px, 100%), 1fr));
+}
+.matrix.solid {
+  overflow-x: auto;
+}
+.matrix.solid table {
+  table-layout: auto;
+}
 .matrix.solid .cell {
-  min-width: 58px;
+  min-width: 64px;
 }
 @media (max-width: 860px) {
   .three-host {
     height: 340px;
   }
 }
+/* Negative values (orange) are left of zero; the positive part uses the same viridis ramp. */
 .surface-ramp.signed {
-  background: linear-gradient(90deg, var(--reaction), var(--surface-lo) 35%, var(--surface-hi));
+  background: linear-gradient(90deg, var(--reaction), #f3c3a3 var(--zero, 35%), #355f8d var(--zero, 35%), #2a788e, #21918c, #22a884, #44bf70, #7ad151, #bddf26, #fde725);
+}
+.view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+.cut3-controls {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 1fr) auto;
+  align-items: center;
+  gap: 2px 8px;
+  font-size: 12px;
+  color: var(--muted);
+  margin: 4px 0;
+}
+.cut3-controls .theta-value {
+  min-width: 42px;
+}
+.cut3-read {
+  grid-column: 1 / -1;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12px;
 }
 .surface3d .panel-head {
   display: flex;
@@ -2275,4 +2350,7 @@ fieldset.plain:disabled {
 .h2-sym {
   text-transform: none;
   letter-spacing: 0;
+}
+.orientation-editor .vec-row {
+  grid-template-columns: 96px repeat(3, minmax(0, 1fr));
 }

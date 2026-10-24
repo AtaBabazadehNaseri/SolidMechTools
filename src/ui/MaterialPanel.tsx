@@ -1,6 +1,20 @@
 import { useState } from 'react';
-import { type EffectiveSymmetry, IN_PLANE, PRESETS, SECTIONS, SYMMETRY_CLASSES, SYMMETRY_ELEMENTS, type SectionId, type SymmetryClassId } from '../mechanics';
+import {
+  type EffectiveSymmetry,
+  IN_PLANE,
+  type Mat,
+  PRESETS,
+  SECTIONS,
+  SYMMETRY_CLASSES,
+  SYMMETRY_ELEMENTS,
+  type SectionId,
+  type SymmetryClassId,
+  type Vec3,
+  axesFromVectors,
+  axesOf,
+} from '../mechanics';
 import { type Action, type LabDerived, type LabState, type MaterialDerived, presetOf } from '../app/lab';
+import { fmt } from '../app/format';
 import { documentOf, encodeFragment } from '../app/share';
 import { Knob } from './Knob';
 import { MaterialInput } from './MaterialInput';
@@ -99,8 +113,7 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
           {user && user.classId === state.classId && <option value="user">{user.name === 'Your material' ? user.name : `Your material: ${user.name}`}</option>}
           {PRESETS.filter((p) => p.classId === state.classId).map((p) => (
             <option key={p.id} value={p.id}>
-              {p.name}
-              {p.illustrative ? ' (illustrative)' : ''}
+              {p.name} · {p.kind}
             </option>
           ))}
           <option value="custom">Custom{state.custom ? ` (from ${preset.name})` : ''}</option>
@@ -129,7 +142,7 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
                 {s.label}
               </option>
             ))}
-            {state.customR && <option value="custom">Your orientation (as entered)</option>}
+            {state.customR && <option value="custom">Your orientation (as set)</option>}
           </select>
         </label>
       )}
@@ -142,6 +155,26 @@ export function MaterialPanel({ state, derived, material, dispatch }: Props) {
           0
         </button>
       </label>
+      {!plane && (
+        <details className="orientation" key={state.space} open={state.space === '3d'}>
+          <summary>{state.space === '3d' ? 'Tilt the material, or set its axes directly' : 'Tilt the section, or set the material axes directly'}</summary>
+          {([0, 1] as const).map((i) => (
+            <label key={i} className="field theta">
+              <span>Tilt about {i === 0 ? 'x' : 'y'}</span>
+              <input type="range" min={-180} max={180} step={1} value={state.tiltDeg[i]} onChange={(e) => dispatch({ type: 'tilt', axis: i, deg: Number(e.target.value) })} />
+              <span className="theta-value">{state.tiltDeg[i]}°</span>
+              <button className="mini" onClick={() => dispatch({ type: 'tilt', axis: i, deg: 0 })}>
+                0
+              </button>
+            </label>
+          ))}
+          <p className="hint">
+            The material turns and the specimen and its loads stay fixed. The rotations act in order: the {state.section === 'custom' ? 'set orientation' : 'section'}, the tilt
+            about x, the tilt about y, then θ about z.{state.space === '2d' ? ' A tilt moves the section plane through the material.' : ''}
+          </p>
+          <OrientationEditor R={derived.R} dispatch={dispatch} />
+        </details>
+      )}
 
       <h3>Engineering constants (material axes)</h3>
       <details className="about">
@@ -224,6 +257,71 @@ function SymmetryBox({ state, material }: { state: LabState; material: MaterialD
         class’s generating rotations about the material axes.
       </p>
     </details>
+  );
+}
+
+const parseNum = (t: string) => Number(t.trim().replace(/−/g, '-'));
+const shown = (v: number[], digits = 4) => v.map((x) => fmt(x, digits, 1e-9));
+
+/**
+ * Sets the material axes from axis 1 and any vector in the 1–2 plane, in x, y, z. The fields start from the
+ * current axes, so a small change of one component is a small change of orientation.
+ */
+function OrientationEditor({ R, dispatch }: { R: Mat; dispatch: (a: Action) => void }) {
+  const [a1, setA1] = useState<string[] | null>(null);
+  const [a2, setA2] = useState<string[] | null>(null);
+  const axes = axesOf(R);
+  const v1 = a1 ?? shown(axes[0], 3);
+  const v2 = a2 ?? shown(axes[1], 3);
+  const nums = [...v1, ...v2].map(parseNum);
+  const result = nums.some((x) => !Number.isFinite(x))
+    ? { error: 'Each vector needs three numbers.' }
+    : axesFromVectors(nums.slice(0, 3) as Vec3, nums.slice(3) as Vec3);
+  const edited = a1 !== null || a2 !== null;
+  const row = (v: string[], set: (v: string[]) => void, label: string) => (
+    <div className="vec-row">
+      <span>{label}</span>
+      {['x', 'y', 'z'].map((c, i) => (
+        <input key={c} aria-label={`${label} ${c}`} value={v[i]} onChange={(e) => set(v.map((x, k) => (k === i ? e.target.value : x)))} />
+      ))}
+    </div>
+  );
+  return (
+    <div className="orientation-editor">
+      <div className="om-vectors">
+        {row(v1, setA1, 'Axis 1')}
+        {row(v2, setA2, 'In the 1–2 plane')}
+      </div>
+      <p className="hint">
+        Now: {axes.map((a, k) => `axis ${k + 1} = (${shown(a).join(', ')})`).join(' · ')}. Axis 2 is the second vector made perpendicular to
+        axis 1, and axis 3 = axis 1 × axis 2.
+      </p>
+      {'error' in result && edited && <p className="om-error">{result.error}</p>}
+      <div className="own-row">
+        <button
+          className="mini"
+          disabled={!edited || 'error' in result}
+          onClick={() => {
+            if ('R' in result) dispatch({ type: 'orientation', R: result.R });
+            setA1(null);
+            setA2(null);
+          }}
+        >
+          Set these axes
+        </button>
+        {edited && (
+          <button
+            className="mini"
+            onClick={() => {
+              setA1(null);
+              setA2(null);
+            }}
+          >
+            Undo edits
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
 

@@ -45,7 +45,7 @@ describe('symmetry groups and projections', () => {
 
   it('projection is idempotent, and the residual is orthogonal to the class', () => {
     const r = rng(3);
-    const M = rotateComplianceVoigt(S('tri-albite'), randomRotation(r));
+    const M = rotateComplianceVoigt(S('trc-21a'), randomRotation(r));
     const Mm = voigtToMandel(M, 'compliance');
     for (const id of SPACE_ORDER) {
       const P = projectMandel(Mm, id);
@@ -58,29 +58,29 @@ describe('symmetry groups and projections', () => {
 
   it('the isotropic part is invariant under any rotation', () => {
     const r = rng(5);
-    const P = projectMandel(voigtToMandel(S('tri-albite'), 'compliance'), 'isotropic');
+    const P = projectMandel(voigtToMandel(S('trc-21a'), 'compliance'), 'isotropic');
     const Q = mandelRotation(randomRotation(r));
     expect(rel(matMul(matMul(Q, P), transpose(Q)), P)).toBeLessThan(1e-12);
   });
 
-  it('picks the highest symmetry: copper cubic, quartz trigonal, CFRP transversely isotropic about axis 1', () => {
-    expect(bestFit(spaceClassFits(S('cubic-cu'), 'compliance'), SPACE_ORDER).classId).toBe('cubic');
-    expect(bestFit(spaceClassFits(S('trig-quartz'), 'compliance'), SPACE_ORDER).classId).toBe('trigonal');
-    const cf = bestFit(spaceClassFits(S('ortho-cfrp'), 'compliance'), SPACE_ORDER);
-    expect(cf.classId).toBe('hexagonal');
+  it('picks the highest symmetry: cubic, trigonal, and the fibre composite transversely isotropic about axis 1', () => {
+    expect(bestFit(spaceClassFits(S('cub-3a'), 'compliance'), SPACE_ORDER).classId).toBe('cubic');
+    expect(bestFit(spaceClassFits(S('trg-6a'), 'compliance'), SPACE_ORDER).classId).toBe('trigonal');
+    const ply = bestFit(spaceClassFits(S('ort-9b'), 'compliance'), SPACE_ORDER);
+    expect(ply.classId).toBe('hexagonal');
     // Its symmetry axis (class axis 3) is the entered axis 1.
-    expect(cf.relabel[2]).toEqual([1, 0, 0]);
-    expect(bestFit(spaceClassFits(S('tri-albite'), 'compliance'), SPACE_ORDER).classId).toBe('triclinic');
+    expect(ply.relabel[2]).toEqual([1, 0, 0]);
+    expect(bestFit(spaceClassFits(S('trc-21a'), 'compliance'), SPACE_ORDER).classId).toBe('triclinic');
   });
 
   it('a relabelled class reproduces the entered material exactly', () => {
-    // Quartz with its 3-fold axis turned onto axis 1, and its 2-fold onto axis 2.
+    // The trigonal preset with its 3-fold axis turned onto axis 1, and its 2-fold onto axis 2.
     const P: Mat = [
       [0, 0, 1],
       [1, 0, 0],
       [0, 1, 0],
     ];
-    const entered = rotateComplianceVoigt(S('trig-quartz'), transpose(P));
+    const entered = rotateComplianceVoigt(S('trg-6a'), transpose(P));
     const f = fit(entered, 'trigonal');
     expect(f.distance).toBeLessThan(1e-12);
     const back = rotateComplianceVoigt(f.nearest, transpose(f.relabel));
@@ -89,32 +89,32 @@ describe('symmetry groups and projections', () => {
 
   it('rounding-level noise stays within the rounding tolerance of the true class', () => {
     const r = rng(11);
-    const C = inverse(S('cubic-cu')).map((row) => row.map((v) => (v === 0 ? 0 : v * (1 + 2e-4 * (r() - 0.5)))));
+    const C = inverse(S('cub-3a')).map((row) => row.map((v) => (v === 0 ? 0 : v * (1 + 2e-4 * (r() - 0.5)))));
     const sym = C.map((row, i) => row.map((v, j) => 0.5 * (v + C[j][i])));
     const fits = spaceClassFits(sym, 'stiffness');
     expect(bestFit(fits, SPACE_ORDER).classId).toBe('cubic');
     const nearest = fits.find((f) => f.classId === 'cubic')!.nearest;
-    expect(rel(nearest, inverse(S('cubic-cu')))).toBeLessThan(1e-3);
+    expect(rel(nearest, inverse(S('cub-3a')))).toBeLessThan(1e-3);
   });
 
-  it('in-plane classes: steel isotropic, copper (001) square, aligned CFRP orthotropic, rotated CFRP anisotropic', () => {
+  it('in-plane classes: isotropic, cubic (001) square, aligned ply orthotropic, rotated ply anisotropic', () => {
     const block = (M: Mat) => submatrix(M, IN_PLANE, IN_PLANE);
     const best = (M: Mat) => bestFit(planeClassFits(block(M), 'compliance'), PLANE_ORDER).classId;
-    expect(best(S('iso-steel'))).toBe('plane-isotropic');
-    expect(best(S('cubic-cu'))).toBe('plane-square');
-    expect(best(S('ortho-cfrp'))).toBe('plane-orthotropic');
-    expect(best(rotateComplianceVoigt(S('ortho-cfrp'), rotationAxisAngle([0, 0, 1], 0.5)))).toBe('plane-anisotropic');
-    // copper on (111) is isotropic in the plane
+    expect(best(S('iso-2a'))).toBe('plane-isotropic');
+    expect(best(S('cub-3a'))).toBe('plane-square');
+    expect(best(S('ort-9b'))).toBe('plane-orthotropic');
+    expect(best(rotateComplianceVoigt(S('ort-9b'), rotationAxisAngle([0, 0, 1], 0.5)))).toBe('plane-anisotropic');
+    // a cubic crystal on (111) is isotropic in the plane
     const R111 = [
       [1 / Math.SQRT2, -1 / Math.SQRT2, 0],
       [1 / Math.sqrt(6), 1 / Math.sqrt(6), -2 / Math.sqrt(6)],
       [1 / Math.sqrt(3), 1 / Math.sqrt(3), 1 / Math.sqrt(3)],
     ];
-    expect(effectivePlaneSymmetry(rotateComplianceVoigt(S('cubic-cu'), R111))).toBe('plane-isotropic');
+    expect(effectivePlaneSymmetry(rotateComplianceVoigt(S('cub-3a'), R111))).toBe('plane-isotropic');
   });
 
   it('Mandel and Voigt conversions invert each other', () => {
-    const M = S('tri-albite');
+    const M = S('trc-21a');
     expect(rel(mandelToVoigt(voigtToMandel(M, 'compliance'), 'compliance'), M)).toBeLessThan(1e-15);
     expect(rel(mandelToVoigt(voigtToMandel(inverse(M), 'stiffness'), 'stiffness'), inverse(M))).toBeLessThan(1e-15);
   });

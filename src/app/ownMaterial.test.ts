@@ -35,13 +35,13 @@ const load = (e: Entry, classId?: string, R: Mat = I3, thetaDeg = 0) => {
 
 describe('notation', () => {
   it('converts every order, shear convention and unit and back', () => {
-    const Cstd = inverse(S('tri-albite'));
+    const Cstd = inverse(S('trc-21a'));
     for (const kind of ['stiffness', 'compliance'] as const)
       for (const order of ['voigt', 'shear-12-13-23'] as OrderId[])
         for (const shear of ['engineering', 'tensor', 'mandel'] as ShearConvention[])
           for (const unit of UNITS) {
             const n: Notation = { kind, order, shear, unit };
-            const M = kind === 'stiffness' ? Cstd : S('tri-albite');
+            const M = kind === 'stiffness' ? Cstd : S('trc-21a');
             expect(rel(toStandard(fromStandard(M, n), n), M), JSON.stringify(n)).toBeLessThan(1e-14);
             const M2 = submatrix(M, IN_PLANE, IN_PLANE);
             expect(rel(toStandard(fromStandard(M2, n), n), M2)).toBeLessThan(1e-14);
@@ -49,13 +49,13 @@ describe('notation', () => {
   });
 
   it('applies the textbook factors: Mandel C₄₄ = 2C₄₄, tensor S₁₂₁₂ = S₆₆/4, and the 12-13-23 order', () => {
-    const C = inverse(S('tri-albite'));
+    const C = inverse(S('trc-21a'));
     const mandel = fromStandard(C, { kind: 'stiffness', order: 'voigt', shear: 'mandel', unit: 'MPa' });
     expect(mandel[3][3]).toBeCloseTo(2 * C[3][3], 6);
     expect(mandel[0][3]).toBeCloseTo(Math.SQRT2 * C[0][3], 6);
-    const St = fromStandard(S('tri-albite'), { kind: 'compliance', order: 'voigt', shear: 'tensor', unit: 'MPa' });
-    expect(St[5][5]).toBeCloseTo(S('tri-albite')[5][5] / 4, 18);
-    expect(St[0][5]).toBeCloseTo(S('tri-albite')[0][5] / 2, 18);
+    const St = fromStandard(S('trc-21a'), { kind: 'compliance', order: 'voigt', shear: 'tensor', unit: 'MPa' });
+    expect(St[5][5]).toBeCloseTo(S('trc-21a')[5][5] / 4, 18);
+    expect(St[0][5]).toBeCloseTo(S('trc-21a')[0][5] / 2, 18);
     const alt = fromStandard(C, { kind: 'stiffness', order: 'shear-12-13-23', shear: 'engineering', unit: 'GPa' });
     expect(alt[3][3]).toBeCloseTo(C[5][5] / 1000, 9); // position 4 holds 12
     expect(alt[5][0]).toBeCloseTo(C[3][0] / 1000, 9); // position 6 holds 23
@@ -88,7 +88,7 @@ describe('parsing pasted text', () => {
 });
 
 describe('checks on loading', () => {
-  const copperC = gpa(inverse(S('cubic-cu')));
+  const cubicC = gpa(inverse(S('cub-3a')));
   const notation: Notation = { kind: 'stiffness', order: 'voigt', shear: 'engineering', unit: 'GPa' };
   const matrix = (m: Mat, n: Partial<Notation> = {}, dimension: 2 | 3 = 3, plane: 'stress' | 'strain' = 'stress'): Entry => ({
     definition: 'matrix',
@@ -99,10 +99,10 @@ describe('checks on loading', () => {
   });
 
   it('refuses a clearly asymmetric matrix, and averages one that differs by rounding', () => {
-    const asym = copperC.map((r) => [...r]);
+    const asym = cubicC.map((r) => [...r]);
     asym[0][1] *= 1.1;
     expect(analyze(matrix(asym)).errors[0]).toMatch(/not symmetric/);
-    const rounding = copperC.map((r) => [...r]);
+    const rounding = cubicC.map((r) => [...r]);
     rounding[0][1] *= 1 + 1e-4;
     const a = analyze(matrix(rounding));
     expect(a.errors).toEqual([]);
@@ -127,33 +127,33 @@ describe('checks on loading', () => {
     expect(analyze(c(3, 'isotropic')).errors[0]).toMatch(/not stable/);
   });
 
-  it('copper C_ij from a paper loads as cubic, with its constants and its specimen matrices', () => {
-    const { a, state } = load(matrix(copperC));
+  it('a cubic C_ij from a paper loads as cubic, with its constants and its specimen matrices', () => {
+    const { a, state } = load(matrix(cubicC));
     expect(a.suggested).toBe('cubic');
-    const p = PRESETS.find((x) => x.id === 'cubic-cu')!.params;
+    const p = PRESETS.find((x) => x.id === 'cub-3a')!.params;
     for (const k of Object.keys(p)) expect(state.params[k] / p[k]).toBeCloseTo(1, 12);
-    expect(rel(deriveLab(state).S6, S('cubic-cu'))).toBeLessThan(1e-12);
+    expect(rel(deriveLab(state).S6, S('cub-3a'))).toBeLessThan(1e-12);
   });
 
-  it('a pasted CFRP matrix loads as hexagonal about its fibres, and the specimen sees the same material', () => {
-    const { a, state } = load(matrix(gpa(inverse(S('ortho-cfrp')))));
+  it('a pasted fibre-composite matrix loads as hexagonal about its fibres, and the specimen sees the same material', () => {
+    const { a, state } = load(matrix(gpa(inverse(S('ort-9b')))));
     expect(a.suggested).toBe('hexagonal');
     expect(state.section).toBe('custom');
-    expect(rel(deriveLab(state).S6, S('ortho-cfrp'))).toBeLessThan(1e-12);
+    expect(rel(deriveLab(state).S6, S('ort-9b'))).toBeLessThan(1e-12);
     // and when kept exact, as triclinic
-    const tri = load(matrix(gpa(inverse(S('ortho-cfrp')))), 'triclinic').state;
-    expect(rel(deriveLab(tri).S6, S('ortho-cfrp'))).toBeLessThan(1e-12);
+    const tri = load(matrix(gpa(inverse(S('ort-9b')))), 'triclinic').state;
+    expect(rel(deriveLab(tri).S6, S('ort-9b'))).toBeLessThan(1e-12);
   });
 
   it('orientation: a material entered with its axes rotated is seen rotated in the specimen', () => {
     const R = specimenRotationFrom(I3, 0.4);
-    const { state } = load(matrix(gpa(inverse(S('tri-albite')))), 'triclinic', R);
-    expect(rel(deriveLab(state).S6, rotateComplianceVoigt(S('tri-albite'), R))).toBeLessThan(1e-12);
+    const { state } = load(matrix(gpa(inverse(S('trc-21a')))), 'triclinic', R);
+    expect(rel(deriveLab(state).S6, rotateComplianceVoigt(S('trc-21a'), R))).toBeLessThan(1e-12);
   });
 });
 
 describe('2D data', () => {
-  const lamina = submatrix(S('ortho-cfrp'), IN_PLANE, IN_PLANE);
+  const lamina = submatrix(S('ort-9b'), IN_PLANE, IN_PLANE);
   const Q = inverse(lamina); // plane-stress reduced stiffness
 
   it('a plane-stress Q matrix reproduces the 3D ply in plane, at any angle, and locks the mode', () => {
@@ -161,7 +161,7 @@ describe('2D data', () => {
     const { a, state } = load(e, undefined, I3, 30);
     expect(a.suggested).toBe('plane-orthotropic');
     expect(state.thetaDeg).toBe(30);
-    const ply = deriveLab({ ...initialState('ortho-cfrp'), thetaDeg: 30 });
+    const ply = deriveLab({ ...initialState('ort-9b'), thetaDeg: 30 });
     expect(rel(deriveLab(state).C2, ply.C2)).toBeLessThan(1e-12);
     const tried = reducer(state, { type: 'mode', mode: 'strain' });
     expect(tried.mode).toBe('stress');
@@ -169,16 +169,16 @@ describe('2D data', () => {
   });
 
   it('a plane-strain C̄ stays exactly the entered C̄ in plane strain', () => {
-    const steelPE = deriveLab({ ...initialState('iso-steel'), mode: 'strain' }).C2;
-    const e: Entry = { definition: 'matrix', dimension: 2, plane: 'strain', notation: { kind: 'stiffness', order: 'voigt', shear: 'engineering', unit: 'MPa' }, matrix: steelPE };
+    const isoPE = deriveLab({ ...initialState('iso-2a'), mode: 'strain' }).C2;
+    const e: Entry = { definition: 'matrix', dimension: 2, plane: 'strain', notation: { kind: 'stiffness', order: 'voigt', shear: 'engineering', unit: 'MPa' }, matrix: isoPE };
     const { a, state } = load(e);
     expect(a.suggested).toBe('plane-isotropic');
     expect(state.mode).toBe('strain');
-    expect(rel(deriveLab(state).C2, steelPE)).toBeLessThan(1e-12);
+    expect(rel(deriveLab(state).C2, isoPE)).toBeLessThan(1e-12);
   });
 
   it('lamina constants E₁, E₂, ν₁₂, G₁₂ give the ply’s in-plane behaviour', () => {
-    const e: Entry = { definition: 'constants', dimension: 2, plane: 'stress', classId: 'plane-orthotropic', constants: { E1: 181, E2: 10.3, nu12: 0.28, G12: 7.17 }, unit: 'GPa' };
+    const e: Entry = { definition: 'constants', dimension: 2, plane: 'stress', classId: 'plane-orthotropic', constants: { E1: 180, E2: 10, nu12: 0.3, G12: 7 }, unit: 'GPa' };
     const { state } = load(e);
     expect(rel(deriveLab(state).S2, lamina)).toBeLessThan(1e-12);
   });
@@ -186,7 +186,7 @@ describe('2D data', () => {
 
 describe('the material format and share links', () => {
   it('round-trips a 3D material, its orientation, θ and mode through a link', () => {
-    const s = { ...initialState('cubic-cu'), section: 'n111' as const, thetaDeg: 17, mode: 'strain' as const };
+    const s = { ...initialState('cub-3a'), section: 'n111' as const, thetaDeg: 17, mode: 'strain' as const };
     const r = decodeFragment('#' + encodeFragment(documentOf(s)));
     if (!r || 'error' in r) throw new Error(r ? r.error : 'no document');
     const back = { ...reducer(s, { type: 'loadMaterial', preset: r.loadable.preset, thetaDeg: r.loadable.thetaDeg }), mode: r.mode };
@@ -196,7 +196,7 @@ describe('the material format and share links', () => {
   });
 
   it('round-trips 2D data', () => {
-    const e: Entry = { definition: 'constants', dimension: 2, plane: 'strain', classId: 'plane-orthotropic', constants: { E1: 181, E2: 10.3, nu12: 0.28, G12: 7.17 }, unit: 'GPa' };
+    const e: Entry = { definition: 'constants', dimension: 2, plane: 'strain', classId: 'plane-orthotropic', constants: { E1: 180, E2: 10, nu12: 0.3, G12: 7 }, unit: 'GPa' };
     const { state } = load(e, undefined, I3, 25);
     const r = decodeFragment(encodeFragment(documentOf(state)));
     if (!r || 'error' in r) throw new Error(r ? r.error : 'no document');
@@ -205,11 +205,11 @@ describe('the material format and share links', () => {
     expect(r.loadable.preset.classId).toBe('plane-orthotropic');
   });
 
-  it('reads the matrix example of docs/material-format.md as cubic copper', () => {
+  it('reads the matrix example of docs/material-format.md as cubic', () => {
     const doc = {
       format: 'solidmechtools.elastic-material',
       version: 1,
-      name: 'Copper single crystal',
+      name: 'CUB-3A',
       units: 'GPa',
       material: {
         dimension: 3,
@@ -218,19 +218,19 @@ describe('the material format and share links', () => {
         order: ['11', '22', '33', '23', '13', '12'],
         shear: 'engineering',
         matrix: [
-          [168.4, 121.4, 121.4, 0, 0, 0],
-          [121.4, 168.4, 121.4, 0, 0, 0],
-          [121.4, 121.4, 168.4, 0, 0, 0],
-          [0, 0, 0, 75.4, 0, 0],
-          [0, 0, 0, 0, 75.4, 0],
-          [0, 0, 0, 0, 0, 75.4],
+          [170, 120, 120, 0, 0, 0],
+          [120, 170, 120, 0, 0, 0],
+          [120, 120, 170, 0, 0, 0],
+          [0, 0, 0, 75, 0, 0],
+          [0, 0, 0, 0, 75, 0],
+          [0, 0, 0, 0, 0, 75],
         ],
       },
     };
     const r = readDocument(doc);
     if ('error' in r) throw new Error(r.error);
     expect(r.loadable.preset.classId).toBe('cubic');
-    expect(r.loadable.preset.name).toBe('Copper single crystal');
+    expect(r.loadable.preset.name).toBe('CUB-3A');
   });
 
   it('reads the constants example with rounded direction cosines', () => {
@@ -242,7 +242,7 @@ describe('the material format and share links', () => {
         dimension: 3,
         definition: 'constants',
         symmetry: 'orthotropic',
-        constants: { E1: 181, E2: 10.3, E3: 10.3, nu12: 0.28, nu13: 0.28, nu23: 0.4, G23: 3.679, G13: 7.17, G12: 7.17 },
+        constants: { E1: 180, E2: 10, E3: 10, nu12: 0.3, nu13: 0.3, nu23: 0.4, G23: 3.571, G13: 7, G12: 7 },
       },
       orientation: { axis1: [0.866, 0.5, 0], axis2: [-0.5, 0.866, 0], axis3: [0, 0, 1] },
     });

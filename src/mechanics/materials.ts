@@ -440,12 +440,18 @@ export const SECTIONS: Record<SectionId, SectionDef> = {
 };
 
 // ---------------------------------------------------------------------------
-// Presets. All values in MPa. "Illustrative" presets are designed to expose a
-// behaviour; the others carry published data, cited in `source`.
+// Presets. All values in MPa. Every preset is an illustrative material with
+// rounded values: a teaching example, not material data. Where a set is loosely
+// based on a published one, `basis` says which; it is shown only in the
+// references section. Names are class code + number of independent constants
+// + a letter, e.g. CUB-3A.
 
 export interface MaterialPreset {
   id: string;
+  /** Code such as CUB-3A, or the user's own name. */
   name: string;
+  /** A generic description, e.g. 'strongly anisotropic cubic crystal'. Never a real material. */
+  kind: string;
   classId: SymmetryClassId;
   params: Params;
   /** 'custom' uses `orientation`, e.g. for a material entered by the user. */
@@ -454,10 +460,12 @@ export interface MaterialPreset {
   orientation?: Mat;
   /** 2D data only: the plane state it describes, which then cannot change. */
   plane?: 'stress' | 'strain';
+  /** Where the values come from, as shown with the material. */
   source: string;
+  /** What a set is loosely based on, with its reference: shown only in the references section. */
+  basis?: string;
   /** What to try with it. */
   blurb: string;
-  illustrative?: boolean;
 }
 
 /**
@@ -480,124 +488,138 @@ export const MONOCLINIC_B_TO_3: Mat = [
 
 export const PRESETS: MaterialPreset[] = [
   {
-    id: 'iso-steel',
-    name: 'Structural steel',
+    id: 'iso-2a',
+    name: 'ISO-2A',
+    kind: 'isotropic solid',
     classId: 'isotropic',
     params: { E1: 200_000, nu12: 0.3 },
     section: 'n3',
-    source: 'Typical handbook values: E = 200 GPa, ν = 0.30.',
+    source: 'Illustrative, rounded values: a teaching example, not material data.',
+    basis: 'Values typical of structural steels, as found in any engineering handbook.',
     blurb: 'Contracts laterally when stretched. No direction is special, so no coupling appears at any orientation.',
   },
   {
-    id: 'iso-auxetic',
-    name: 'Auxetic solid',
+    id: 'iso-2b',
+    name: 'ISO-2B',
+    kind: 'auxetic isotropic solid',
     classId: 'isotropic',
     params: { E1: 2_000, nu12: -0.7 },
     section: 'n3',
-    source: 'Illustrative. ν = −0.7 as reported for re-entrant foams (Lakes, Science 1987); the modulus is arbitrary.',
+    source: 'Illustrative, rounded values: a teaching example, not material data.',
+    basis: 'A Poisson ratio in the range reported for re-entrant foams (Lakes, Science 235, 1987); the modulus is arbitrary.',
     blurb: 'Gets wider when stretched. Isotropic admissibility is −1 < ν < ½.',
-    illustrative: true,
   },
   {
-    id: 'cubic-cu',
-    name: 'Copper single crystal',
+    id: 'cub-3a',
+    name: 'CUB-3A',
+    kind: 'strongly anisotropic cubic crystal',
     classId: 'cubic',
     params: fromStiffnessGPa('cubic', [
-      [1, 1, 168.4], [2, 2, 168.4], [3, 3, 168.4],
-      [1, 2, 121.4], [1, 3, 121.4], [2, 3, 121.4],
-      [4, 4, 75.4], [5, 5, 75.4], [6, 6, 75.4],
+      [1, 1, 170], [2, 2, 170], [3, 3, 170],
+      [1, 2, 120], [1, 3, 120], [2, 3, 120],
+      [4, 4, 75], [5, 5, 75], [6, 6, 75],
     ]),
     section: 'n3',
-    source: 'Room temperature: C₁₁ = 168.4, C₁₂ = 121.4, C₄₄ = 75.4 GPa (standard handbook values).',
-    blurb: 'Zener ratio ≈ 3.2. Rotate it in the (001) plane, then switch the section to ⟂ [111], where it is isotropic in plane.',
+    source: 'Illustrative, rounded values: a teaching example, not material data. C₁₁ = 170, C₁₂ = 120, C₄₄ = 75 GPa.',
+    basis: 'Loosely based on room-temperature elastic constants of copper single crystals, as tabulated in Simmons & Wang, Single Crystal Elastic Constants and Calculated Aggregate Properties (MIT Press, 1971).',
+    blurb: 'Zener ratio 3. Rotate it in the (001) plane, then switch the section to ⟂ [111], where it is isotropic in plane.',
   },
   {
-    id: 'hex-ti',
-    name: 'α-Titanium single crystal',
+    id: 'hex-5a',
+    name: 'HEX-5A',
+    kind: 'hexagonal crystal (transversely isotropic)',
     classId: 'hexagonal',
     params: fromStiffnessGPa('hexagonal', [
-      [1, 1, 162.4], [2, 2, 162.4], [3, 3, 180.7],
-      [1, 2, 92.0], [1, 3, 69.0], [2, 3, 69.0],
-      [4, 4, 46.7], [5, 5, 46.7], [6, 6, (162.4 - 92.0) / 2],
+      [1, 1, 160], [2, 2, 160], [3, 3, 180],
+      [1, 2, 90], [1, 3, 70], [2, 3, 70],
+      [4, 4, 45], [5, 5, 45], [6, 6, (160 - 90) / 2],
     ]),
     section: 'n2',
-    source: 'Fisher & Renken (1964): C₁₁ = 162.4, C₁₂ = 92.0, C₁₃ = 69.0, C₃₃ = 180.7, C₄₄ = 46.7 GPa.',
-    blurb: 'Section contains the c-axis (along x). Switch to the basal plane (⟂ axis 3) and the response becomes isotropic in plane.',
+    source: 'Illustrative, rounded values: a teaching example, not material data. C₁₁ = 160, C₁₂ = 90, C₁₃ = 70, C₃₃ = 180, C₄₄ = 45 GPa.',
+    basis: 'Loosely based on the single-crystal constants of α-titanium reported by Fisher & Renken, Phys. Rev. 135 (1964).',
+    blurb: 'Section contains the symmetry axis 3 (along x). Switch to the plane ⟂ axis 3 and the response becomes isotropic in plane.',
   },
   {
-    id: 'tetra-rutile',
-    name: 'Rutile (TiO₂)',
+    id: 'tet-6a',
+    name: 'TET-6A',
+    kind: 'tetragonal crystal',
     classId: 'tetragonal',
     params: fromStiffnessGPa('tetragonal', [
-      [1, 1, 268], [2, 2, 268], [3, 3, 484],
-      [1, 2, 175], [1, 3, 147], [2, 3, 147],
-      [4, 4, 123.8], [5, 5, 123.8], [6, 6, 190.2],
+      [1, 1, 270], [2, 2, 270], [3, 3, 480],
+      [1, 2, 180], [1, 3, 150], [2, 3, 150],
+      [4, 4, 125], [5, 5, 125], [6, 6, 190],
     ]),
     section: 'n3',
-    source: 'Cynn et al., Phys. Chem. Minerals (1998): C₁₁ = 268, C₁₂ = 175, C₁₃ = 147, C₃₃ = 484, C₄₄ = 123.8, C₆₆ = 190.2 GPa.',
+    source: 'Illustrative, rounded values: a teaching example, not material data. C₁₁ = 270, C₁₂ = 180, C₁₃ = 150, C₃₃ = 480, C₄₄ = 125, C₆₆ = 190 GPa.',
+    basis: 'Loosely based on the constants of rutile (TiO₂) reported by Isaak et al., Phys. Chem. Minerals 26 (1998).',
     blurb: 'Four-fold in-plane symmetry with very stiff 45° directions. Snap G₁₂ to its isotropic value and it becomes hexagonal.',
   },
   {
-    id: 'trig-quartz',
-    name: 'α-Quartz',
+    id: 'trg-6a',
+    name: 'TRG-6A',
+    kind: 'trigonal crystal',
     classId: 'trigonal',
     params: fromStiffnessGPa('trigonal', [
-      [1, 1, 86.76], [2, 2, 86.76], [3, 3, 105.5],
-      [1, 2, 6.868], [1, 3, 11.85], [2, 3, 11.85],
-      [4, 4, 58.14], [5, 5, 58.14], [6, 6, (86.76 - 6.868) / 2],
-      [1, 4, -18.02], [2, 4, 18.02], [5, 6, -18.02],
+      [1, 1, 87], [2, 2, 87], [3, 3, 105],
+      [1, 2, 7], [1, 3, 12], [2, 3, 12],
+      [4, 4, 58], [5, 5, 58], [6, 6, (87 - 7) / 2],
+      [1, 4, -18], [2, 4, 18], [5, 6, -18],
     ]),
     section: 'n3',
-    source:
-      'Ogi et al., J. Appl. Phys. 100 (2006), 30 °C: C₁₁ = 86.76, C₁₂ = 6.868, C₁₃ = 11.85, C₁₄ = −18.02, C₃₃ = 105.5, C₄₄ = 58.14 GPa. The sign of C₁₄ depends on the axis setting.',
-    blurb: 'In-plane response is isotropic, yet in-plane tension produces out-of-plane shear γyz. The 2D drawing cannot show it, so watch the out-of-plane readouts.',
+    source: 'Illustrative, rounded values: a teaching example, not material data. C₁₁ = 87, C₁₂ = 7, C₁₃ = 12, C₁₄ = −18, C₃₃ = 105, C₄₄ = 58 GPa.',
+    basis: 'Loosely based on the constants of α-quartz reported by Ogi et al., J. Appl. Phys. 100 (2006).',
+    blurb: 'In-plane response is isotropic, yet in-plane tension produces out-of-plane shear γyz. Watch the out-of-plane readouts, or open the 3D cube.',
   },
   {
-    id: 'ortho-bone',
-    name: 'Human cortical bone (femur)',
+    id: 'ort-9a',
+    name: 'ORT-9A',
+    kind: 'weakly anisotropic orthotropic solid',
     classId: 'orthotropic',
     params: {
-      E1: 13_400, E2: 14_100, E3: 22_900,
-      nu12: 0.42, nu13: 0.23, nu23: 0.23,
-      G23: 6_200, G13: 5_800, G12: 4_600,
+      E1: 13_000, E2: 14_000, E3: 23_000,
+      nu12: 0.4, nu13: 0.25, nu23: 0.25,
+      G23: 6_000, G13: 5_500, G12: 4_500,
     },
     section: 'n2',
-    source:
-      'Taylor et al. (2002), as supplied: 1 = radial, 2 = tangential, 3 = femoral axis. Read here as ν₁₂ = 0.42 and ν₁₃ = ν₂₃ = 0.23 with the lower index loaded.',
-    blurb: 'Section contains the femoral axis (x) and the radial direction (y). The transverse plane (⟂ axis 3) is nearly isotropic.',
+    source: 'Illustrative, rounded values: a teaching example, not material data.',
+    basis: 'Loosely based on the orthotropic constants of cortical bone compiled by Taylor et al., J. Biomech. 35 (2002).',
+    blurb: 'Section contains axis 3 (along x) and axis 1 (along y). The plane ⟂ axis 3 is nearly isotropic.',
   },
   {
-    id: 'ortho-cfrp',
-    name: 'Carbon/epoxy T300/5208',
+    id: 'ort-9b',
+    name: 'ORT-9B',
+    kind: 'unidirectional fibre composite',
     classId: 'orthotropic',
-    params: { E1: 181_000, E2: 10_300, E3: 10_300, nu12: 0.28, nu13: 0.28, nu23: 0.4, G23: 10_300 / (2 * 1.4), G13: 7_170, G12: 7_170 },
+    params: { E1: 180_000, E2: 10_000, E3: 10_000, nu12: 0.3, nu13: 0.3, nu23: 0.4, G23: 10_000 / (2 * 1.4), G13: 7_000, G12: 7_000 },
     section: 'n3',
-    source:
-      'In plane: Tsai & Hahn (1980), E₁ = 181, E₂ = 10.3, G₁₂ = 7.17 GPa, ν₁₂ = 0.28. Out of plane assumed transversely isotropic about the fibres, with ν₂₃ = 0.4.',
+    source: 'Illustrative, rounded values: a teaching example, not material data. E₁ = 180, E₂ = E₃ = 10, G₁₂ = G₁₃ = 7 GPa, ν₁₂ = ν₁₃ = 0.3, ν₂₃ = 0.4 (transversely isotropic about the fibres).',
+    basis: 'Loosely based on the unidirectional carbon/epoxy ply data in Tsai & Hahn, Introduction to Composite Materials (1980).',
     blurb: 'Fibres along axis 1. Aligned, it does not shear under tension. Rotate it and extension–shear coupling appears in the specimen frame.',
   },
   {
-    id: 'mono-diopside',
-    name: 'Diopside (CaMgSi₂O₆)',
+    id: 'mon-13a',
+    name: 'MON-13A',
+    kind: 'monoclinic crystal',
     classId: 'monoclinic',
     params: fromStiffnessGPa(
       'monoclinic',
       [
-        [1, 1, 229.0], [2, 2, 179.0], [3, 3, 242.5],
-        [4, 4, 78.9], [5, 5, 68.1], [6, 6, 78.2],
-        [1, 2, 78.0], [1, 3, 69.8], [2, 3, 58.0],
-        [1, 5, 9.9], [2, 5, 6.1], [3, 5, 40.9], [4, 6, 6.6],
+        [1, 1, 230], [2, 2, 180], [3, 3, 240],
+        [4, 4, 80], [5, 5, 70], [6, 6, 80],
+        [1, 2, 80], [1, 3, 70], [2, 3, 60],
+        [1, 5, 10], [2, 5, 6], [3, 5, 40], [4, 6, 7],
       ],
       MONOCLINIC_B_TO_3,
     ),
     section: 'n3',
-    source:
-      'Am. Mineral. 96 (2011), doi:10.2138/am.2011.3674, sample 1 (values approximate). Published with the 2-fold axis ∥ b ∥ x₂; re-expressed here with 1 ∥ c, 2 ∥ a*, 3 ∥ b.',
-    blurb: 'The specimen plane is the mirror plane (a*–c), so extension–shear coupling is present in the material’s own axes.',
+    source: 'Illustrative, rounded values: a teaching example, not material data. Written with the 2-fold axis along axis 2 and re-expressed with it along axis 3.',
+    basis: 'Loosely based on the constants of diopside reported by Sang et al., Am. Mineral. 96 (2011).',
+    blurb: 'The specimen plane is the mirror plane, so extension–shear coupling is present in the material’s own axes.',
   },
   {
-    id: 'mono-coupled',
-    name: 'Strong extension–shear coupling',
+    id: 'mon-13b',
+    name: 'MON-13B',
+    kind: 'monoclinic solid with strong extension–shear coupling',
     classId: 'monoclinic',
     params: {
       E1: 50_000, E2: 20_000, E3: 15_000, nu12: 0.25, nu13: 0.2, nu23: 0.3,
@@ -605,25 +627,26 @@ export const PRESETS: MaterialPreset[] = [
       eta12_1: 0.8, eta12_2: -0.3, eta12_3: 0.1, mu13_23: 0.2,
     },
     section: 'n3',
-    source: 'Illustrative.',
+    source: 'Illustrative, rounded values: a teaching example, not material data.',
+    basis: 'Invented to show extension–shear coupling; not based on any material.',
     blurb: 'Shears visibly under pure tension. Drive η₁₂,₁ through zero (it snaps there) and watch the skew reverse.',
-    illustrative: true,
   },
   {
-    id: 'tri-albite',
-    name: 'Low albite (NaAlSi₃O₈)',
+    id: 'trc-21a',
+    name: 'TRC-21A',
+    kind: 'triclinic crystal',
     classId: 'triclinic',
     params: fromStiffnessGPa('triclinic', [
-      [1, 1, 69.9], [2, 2, 183.5], [3, 3, 179.5], [4, 4, 24.9], [5, 5, 26.8], [6, 6, 33.5],
-      [1, 2, 34.0], [1, 3, 30.8], [2, 3, 5.5],
-      [1, 4, 5.1], [1, 5, -2.4], [1, 6, -0.9],
-      [2, 4, -3.9], [2, 5, -7.7], [2, 6, -5.8],
-      [3, 4, -8.7], [3, 5, 7.1], [3, 6, -9.8],
-      [4, 5, -2.4], [4, 6, -7.2], [5, 6, 0.5],
+      [1, 1, 70], [2, 2, 185], [3, 3, 180], [4, 4, 25], [5, 5, 27], [6, 6, 34],
+      [1, 2, 34], [1, 3, 31], [2, 3, 6],
+      [1, 4, 5], [1, 5, -2], [1, 6, -1],
+      [2, 4, -4], [2, 5, -8], [2, 6, -6],
+      [3, 4, -9], [3, 5, 7], [3, 6, -10],
+      [4, 5, -2], [4, 6, -7], [5, 6, 0.5],
     ]),
     section: 'n3',
-    source: 'Brown, Abramson & Angel, Phys. Chem. Minerals 33 (2006) 256–265. Axes: 1 ∥ a*, 2 ∥ b, 3 completes the right-handed set.',
+    source: 'Illustrative, rounded values: a teaching example, not material data.',
+    basis: 'Loosely based on the constants of low albite reported by Brown, Abramson & Angel, Phys. Chem. Minerals 33 (2006).',
     blurb: 'Every coupling present: in-plane tension also produces out-of-plane shears γyz and γxz.',
   },
 ];
-

@@ -22,7 +22,7 @@ export const c16StillShears: Guide = {
       context: [
         'You are handed this in-plane stiffness for an FE model. The highlighted entry $\\bar C_{16}$ couples the normal strain $\\varepsilon_{xx}$ to the shear stress $\\tau_{xy}$. The specimen is pulled along x, traction-free otherwise, and it shears.',
       ],
-      setup: (s) => select(fresh('mono-coupled', s, { overlays: { materialAxes: true }, magnification: 300 }), 'C'),
+      setup: (s) => select(fresh('mon-13b', s, { overlays: { materialAxes: true }, magnification: 300 }), 'C'),
       show: ['matrices', 'response'],
       predict: {
         question: 'Suppose C̄₁₆ were exactly zero. Would this specimen still shear when pulled along x?',

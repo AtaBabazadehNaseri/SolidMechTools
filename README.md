@@ -2,11 +2,13 @@
 
 Interactive tools for building physical intuition in solid mechanics.
 
+> **Educational use only.** A personal project for exploring linear elasticity. The example materials are hypothetical and their values are illustrative. Nothing here is verified or intended for design, analysis, certification or any decision with real-world consequences. See [Disclaimer](#disclaimer).
+
 ## Elasticity Tensor Lab
 
 **Try it: https://atababazadehnaseri.github.io/SolidMechTools/** (runs in the browser; best on a laptop or desktop)
 
-![Elasticity Tensor Lab: an off-axis carbon/epoxy ply shearing under pure tension](public/og-image.png)
+![Elasticity Tensor Lab: an off-axis fibre-composite ply shearing under pure tension](public/og-image.png)
 
 A homogeneous specimen cut from a 3D linear elastic material, in plane stress
 or plane strain. Material constants are the controls; the stiffness and
@@ -22,20 +24,21 @@ Also in the lab:
 - directional moduli and anisotropy indices;
 - symmetry detection for the current constants;
 - snapping knobs ("= E₁", "isotropic in the 1–2 plane", "0");
-- real-material presets for all eight symmetry classes.
+- example materials for all eight symmetry classes (see [Example materials](#example-materials)).
 
 ### 3D mode
 
 The third button of the mode switch replaces the 2D section with a cube. Each of its six stress components is traction- or displacement-controlled, as in 2D. The 3D view shows:
-- the deformed cube with its face tractions, split into normal and shear parts (prescribed in blue, reactions in orange), and the material axes;
+- the deformed cube with its face tractions, split into normal and shear parts (prescribed in blue, reactions in orange);
+- the same overlays as 2D: material axes, material lines, principal stress and strain axes, and a cut plane at any normal, with its traction t = σ·n and its point on the Mohr circles;
 - the full 6×6 C and S, where clicking an entry explains it and runs the one test that isolates it;
-- surfaces over every direction for Young's modulus E(n), linear compressibility β(n), and the minimum and maximum over m ⟂ n of the shear modulus G(n, m) and Poisson's ratio ν(n, m), with extremes and a hover readout. The x–y slice of E(n) is drawn in amber: it is the 2D polar plot of E(φ) in plane stress;
-- the principal stresses and strains in 3D, whether they are coaxial, and the three Mohr circles with the x, y and z faces;
+- surfaces over every direction for Young's modulus E(n), linear compressibility β(n), and the minimum and maximum over m ⟂ n of the shear modulus G(n, m) and Poisson's ratio ν(n, m), each of the two switchable, with extremes and a hover readout. The x–y slice of E(n) is drawn in amber: it is the 2D polar plot of E(φ) in plane stress;
+- the stress and strain tensors, the principal stresses and strains in 3D, whether they are coaxial, and the three Mohr circles with the x, y and z faces;
 - the six Kelvin modes of C, with their multiplicities, each of which can be applied to the cube;
 - the 2D section (the x–y mid-plane) inside the cube, with a link back to 2D;
 - the apparent stiffness along x.
 
-Drag to rotate either view. The 3D code (three.js) loads only when 3D is first opened. 2D data entered by the user has no 3D behaviour, so 3D is disabled for it.
+Drag to rotate either view; "Perspective" switches both views between perspective and parallel projection. Besides θ about z, the material can be tilted about x and y, or its axes set directly from axis 1 and a vector in the 1–2 plane; in 2D a tilt moves the section plane. The 3D code (three.js) loads only when 3D is first opened. 2D data entered by the user has no 3D behaviour, so 3D and the tilts are disabled for it.
 
 ### Your own material
 
@@ -128,8 +131,12 @@ The tests walk every guide as a learner who presses "Show me", and they also jum
   affine in 1/modulus or in the ratio, so the admissible range of each knob is
   an exact open interval (generalized eigenvalues of the knob direction against
   the current S).
-- Presets marked "illustrative" are designed to show a behaviour; they are not
-  material data.
+
+### Example materials
+
+The examples are hypothetical materials. Each name gives the symmetry class and the number of independent elastic constants, then a letter for its order within the class. For example, ISO-2A and ISO-2B are isotropic (2 constants), CUB-3A is cubic (3), and TRC-21A is triclinic (21). The others are HEX-5A, TET-6A, TRG-6A, ORT-9A, ORT-9B, MON-13A and MON-13B.
+
+Their values are rounded and chosen to show a behaviour. They are not data for any real material and must not be used as such. Where an example is loosely based on published constants, the in-app section "About the example materials" cites the publication, for transparency only.
 
 ### Deployment
 
@@ -140,6 +147,23 @@ Pages → Source must be set to **GitHub Actions**.
 ### Status
 
 Built with AI assistance (Claude). The mechanics is checked by an automated
-test suite against analytical results, symmetry and invariance properties, and
-published material data. It has not been independently reviewed by a human
-expert. Corrections are welcome via issues.
+test suite against analytical results and symmetry and invariance properties.
+It has not been independently reviewed. Corrections are welcome via issues.
+
+## Disclaimer
+
+- This is a personal, educational project for self-directed exploration of linear elasticity. It is not a product or a service. It is not affiliated with, endorsed by or representative of any employer or organization.
+- The software and its content are provided "as is", without warranty of any kind, express or implied, including of correctness or fitness for a particular purpose (see sections 11 and 12 of the [license](LICENSE)). The author accepts no responsibility or liability for any use of the software, its results or its content.
+- The example materials are hypothetical. Their values are rounded and illustrative, and they are not the properties of any real material. Do not use anything here as a source of material data.
+- Results come from idealized, homogeneous, small-strain linear elasticity. They are not checked for engineering design, analysis, certification, safety assessment or any decision with real-world consequences, and must not be used for them. Those need validated tools, measured data and qualified professional judgement.
+- The guides and explanations are teaching material. They may simplify, and they may contain errors.
+
+## Privacy
+
+The app has no analytics, no cookies and no accounts, and it makes no network requests of its own. Everything is computed in the browser.
+
+A share link carries its material in the part of the URL after "#", which browsers do not send to the server. The site is hosted on GitHub Pages, which may keep its own server logs. The theme choice and the list of completed guides are kept only in the browser's local storage.
+
+## License
+
+GPL-2.0 (see [LICENSE](LICENSE)). The bundled third-party packages and their licenses are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

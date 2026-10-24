@@ -52,7 +52,7 @@ describe('principal values and cuts', () => {
 describe('coaxiality of stress and strain', () => {
   it('isotropic: stress and strain principal axes always coincide', () => {
     const r = rng(4);
-    const S2 = planeCompliance(preset('iso-steel'), 'stress');
+    const S2 = planeCompliance(preset('iso-2a'), 'stress');
     for (let k = 0; k < 20; k++) {
       const res = solveMixed(S2, { control: ['stress', 'stress', 'stress'], value: [r() - 0.5, r() - 0.5, r() - 0.5].map((v) => 100 * v) as [number, number, number] });
       expect(axisDiff(stressPrincipal(res.stress).angle, strainPrincipal(res.strain).angle)).toBeLessThan(1e-9);
@@ -60,14 +60,14 @@ describe('coaxiality of stress and strain', () => {
   });
 
   it('rotated orthotropic material under uniaxial stress: principal strain axes leave the load axis', () => {
-    const S2 = planeCompliance(rotateComplianceVoigt(preset('ortho-cfrp'), rotationZ(Math.PI / 6)), 'stress');
+    const S2 = planeCompliance(rotateComplianceVoigt(preset('ort-9b'), rotationZ(Math.PI / 6)), 'stress');
     const res = solveMixed(S2, { control: ['stress', 'stress', 'stress'], value: [100, 0, 0] });
     expect(stressPrincipal(res.stress).angle).toBe(0);
     expect(axisDiff(strainPrincipal(res.strain).angle, 0)).toBeGreaterThan(0.1);
   });
 
   it('uniaxial stress along a direction with zero extension–shear coupling gives coaxial strain', () => {
-    const S2 = planeCompliance(rotateComplianceVoigt(preset('mono-coupled'), rotationZ(0.2)), 'stress');
+    const S2 = planeCompliance(rotateComplianceVoigt(preset('mon-13b'), rotationZ(0.2)), 'stress');
     // Find a root of the coupling by bisection.
     let a = 0;
     let b = Math.PI;
@@ -90,7 +90,7 @@ describe('coaxiality of stress and strain', () => {
 describe('Kelvin modes of the in-plane stiffness', () => {
   for (const mode of ['stress', 'strain'] as const) {
     it(`${mode}: σ = λ ε in Mandel form, coaxial, and Σλ = tr C̄_M`, () => {
-      const C2 = planeStiffness(rotateComplianceVoigt(preset('tri-albite'), rotationZ(0.5)), mode);
+      const C2 = planeStiffness(rotateComplianceVoigt(preset('trc-21a'), rotationZ(0.5)), mode);
       const modes = kelvinModes2D(C2);
       for (const m of modes) {
         const sig = matVec(C2, m.strain);

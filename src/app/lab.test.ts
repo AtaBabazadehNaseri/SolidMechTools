@@ -19,14 +19,14 @@ describe('constraint ladder', () => {
   });
 
   it('isotropic: holding the shear changes nothing, so the mixed rungs coincide with the ends', () => {
-    const d = deriveLab(initialState('iso-steel'));
+    const d = deriveLab(initialState('iso-2a'));
     const [ff, hf, fh, hh] = constraintLadder(d.C2).map((r) => r.stiffness);
     expect(close(hf, hh)).toBe(true);
     expect(close(fh, ff)).toBe(true);
   });
 
   it('off-axis composite: a mixed rung lands strictly between the ends', () => {
-    const d = deriveLab({ ...initialState('ortho-cfrp'), thetaDeg: 30 });
+    const d = deriveLab({ ...initialState('ort-9b'), thetaDeg: 30 });
     const [ff, , fh, hh] = constraintLadder(d.C2).map((r) => r.stiffness);
     expect(fh).toBeGreaterThan(ff * 1.1);
     expect(fh).toBeLessThan(hh * 0.9);
@@ -35,7 +35,7 @@ describe('constraint ladder', () => {
 
 describe('rotation sweep', () => {
   it('matches the lab at the current angle and repeats every 180°', () => {
-    const s = { ...initialState('mono-coupled'), thetaDeg: 0 };
+    const s = { ...initialState('mon-13b'), thetaDeg: 0 };
     const d = deriveLab(s);
     expect(close(sweepValue(s, 'gxy', 0), d.response.strain[2] * 1e3)).toBe(true);
     expect(close(sweepValue(s, 'energy', 0), d.energy * 1e3)).toBe(true);

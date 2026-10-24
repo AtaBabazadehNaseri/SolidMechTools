@@ -12,18 +12,18 @@ export const coaxiality: Guide = {
   summary: 'Principal axes of stress and strain coincide in an isotropic solid but not in general: which way the strain axes tilt, the loadings that keep them together, and the states where stress is exactly proportional to strain.',
   steps: [
     {
-      title: 'Any load on steel',
+      title: 'Any load on an isotropic sheet',
       context: [
-        'A steel sheet in uniaxial tension. The solid cross shows the principal directions of the stress, the dashed cross those of the strain. Two tensors are coaxial when their principal directions coincide.',
+        'A sheet of an isotropic solid in uniaxial tension. The solid cross shows the principal directions of the stress, the dashed cross those of the strain. Two tensors are coaxial when their principal directions coincide.',
       ],
-      setup: (s) => fresh('iso-steel', s, { overlays: crosses, magnification: 300 }),
+      setup: (s) => fresh('iso-2a', s, { overlays: crosses, magnification: 300 }),
       show: ['response'],
       predict: {
-        question: 'Is there any combination of in-plane tractions for which steel’s strain would not be coaxial with its stress?',
+        question: 'Is there any combination of in-plane tractions for which this isotropic sheet’s strain would not be coaxial with its stress?',
         options: [
           { text: 'No, never', correct: true },
           { text: 'Yes, when shear and normal tractions are combined', feedback: 'Combine them below and watch the two crosses.' },
-          { text: 'Yes, under pure shear', feedback: 'Try it below: pure shear is tension and compression at 45°, and steel answers along the same 45°.' },
+          { text: 'Yes, under pure shear', feedback: 'Try it below: pure shear is tension and compression at 45°, and an isotropic sheet answers along the same 45°.' },
         ],
       },
       try: {
@@ -52,9 +52,9 @@ export const coaxiality: Guide = {
     {
       title: 'An off-axis ply',
       context: [
-        'A carbon/epoxy ply with its fibres at 30° to x (teal lines). Once you answer, it is pulled along x, so the principal stress lies along x.',
+        'A fibre-composite ply with its fibres at 30° to x (teal lines). Once you answer, it is pulled along x, so the principal stress lies along x.',
       ],
-      setup: (s) => unloaded(fresh('ortho-cfrp', s, { ...ply, thetaDeg: 30 })),
+      setup: (s) => unloaded(fresh('ort-9b', s, { ...ply, thetaDeg: 30 })),
       show: ['principal'],
       predict: {
         question: 'Where will the larger principal strain point?',
@@ -104,7 +104,7 @@ export const coaxiality: Guide = {
       context: [
         'Coaxial means the same principal directions. A stronger agreement is $\\boldsymbol\\sigma = \\lambda\\boldsymbol\\varepsilon$: the stress is the strain times a number, so the principal values are in the same ratio as well. The states with this property are the stiffness’s own eigenmodes, the Kelvin modes, listed at the bottom of the panel on the right. The fibres are back at 30°.',
       ],
-      setup: (s) => fresh('ortho-cfrp', s, { ...ply, thetaDeg: 30 }),
+      setup: (s) => fresh('ort-9b', s, { ...ply, thetaDeg: 30 }),
       show: ['principal', 'kelvin'],
       try: {
         instructions: ['Apply each of the three modes with its button, and watch the specimen, the crosses and the Mohr circles (switch Mohr between stress and strain).'],

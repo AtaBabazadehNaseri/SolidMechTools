@@ -301,7 +301,7 @@ export function RotationSweep({
   const data = useMemo(
     () => rotationSweep(state, q),
     // θ itself is swept, so it is deliberately not a dependency.
-    [state.classId, state.params, state.section, state.customR, state.mode, state.load, q],
+    [state.classId, state.params, state.section, state.customR, state.tiltDeg, state.mode, state.load, q],
   );
   const meta = SWEEP_QUANTITIES.find((x) => x.id === q)!;
   // A component the boundary conditions prescribe cannot change with θ.

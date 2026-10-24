@@ -81,12 +81,12 @@ describe('symmetry classes', () => {
     expectMatClose(inverse(cls.build(paramsFromCompliance(cls, inverse(C)))), C, 1e-11);
   });
 
-  it('copper preset: E_100 ≈ 66.7 GPa, ν ≈ 0.419, Zener ratio ≈ 3.21', () => {
+  it('cubic preset CUB-3A: E_100 ≈ 70.7 GPa, ν ≈ 0.414, Zener ratio 3', () => {
     const p = presetFor('cubic').params;
-    expectClose(p.E1, 66_690, 1e-3);
-    expectClose(p.nu12, 0.4189, 1e-3);
+    expectClose(p.E1, 70_690, 1e-3);
+    expectClose(p.nu12, 0.4138, 1e-3);
     // Zener ratio A = 2C44/(C11 − C12) = 2(1 + ν)G/E in engineering constants.
-    expectClose((2 * (1 + p.nu12) * p.G12) / p.E1, 3.209, 1e-3);
+    expectClose((2 * (1 + p.nu12) * p.G12) / p.E1, 3, 1e-9);
   });
 
   // Holding the other constants fixed, each knob must move S along a straight

@@ -29,12 +29,12 @@ export const kelvinModes: Guide = {
       title: 'Strains that map onto themselves',
       context: [
         'A stress tensor has principal directions: unit vectors n with $\\boldsymbol\\sigma\\mathbf n = \\lambda\\mathbf n$. A stiffness tensor maps strain tensors to stress tensors, so the analogous objects are strain states with $\\boldsymbol\\sigma = \\lambda\\boldsymbol\\varepsilon$, the stress being the strain times a number. In the plane there are three independent strain components, so a 2D stiffness has three such states, orthogonal to each other (Kelvin, 1856).',
-        'The specimen is a steel sheet in plane stress.',
+        'The specimen is a sheet of an isotropic solid (E = 200 GPa, ν = 0.30) in plane stress.',
       ],
-      setup: (s) => fresh('iso-steel', s, { overlays: crosses, magnification: 300 }),
+      setup: (s) => fresh('iso-2a', s, { overlays: crosses, magnification: 300 }),
       show: ['principal', 'response'],
       predict: {
-        question: 'Which strain states of the steel sheet will give a stress exactly proportional to the strain?',
+        question: 'Which strain states of the isotropic sheet will give a stress exactly proportional to the strain?',
         options: [
           {
             text: 'Uniaxial strain, along any direction',
@@ -69,15 +69,15 @@ export const kelvinModes: Guide = {
     },
     {
       title: 'A fibre composite',
-      context: ['A carbon/epoxy ply with its fibres along x, in plane stress. Its shear modulus is G₁₂ = 7.17 GPa.'],
-      setup: (s) => fresh('ortho-cfrp', s, ply),
+      context: ['A fibre-composite ply with its fibres along x, in plane stress. Its shear modulus is G₁₂ = 7 GPa.'],
+      setup: (s) => fresh('ort-9b', s, ply),
       show: ['principal', 'kelvin', 'response'],
       predict: {
         question: 'One of the ply’s three modes is a pure shear in its fibre axes. What will its modulus λ be?',
         options: [
-          { text: 'G₁₂ = 7.17 GPa', feedback: 'With tensor shear as the strain component, a pure shear mode has λ = 2G.' },
-          { text: '2G₁₂ = 14.34 GPa', correct: true },
-          { text: 'E₂ = 10.3 GPa', feedback: 'That is close to the softest mode, which is a stretch, not a shear.' },
+          { text: 'G₁₂ = 7 GPa', feedback: 'With tensor shear as the strain component, a pure shear mode has λ = 2G.' },
+          { text: '2G₁₂ = 14 GPa', correct: true },
+          { text: 'E₂ = 10 GPa', feedback: 'That is close to the softest mode, which is a stretch, not a shear.' },
         ],
       },
       try: {
@@ -102,12 +102,12 @@ export const kelvinModes: Guide = {
         ],
       },
       explain: [
-        'Aligned, an orthotropic ply decouples normal and shear components, so one mode is the pure shear (λ = 2G₁₂ = 14.34 GPa) and the other two mix ε₁₁ and ε₂₂. The stiffest is nearly pure fibre stretching (ε₂₂/ε₁₁ ≈ 0.017, λ = 181.9 GPa); the softest is nearly pure transverse stretching (λ = 10.3 GPa).',
+        'Aligned, an orthotropic ply decouples normal and shear components, so one mode is the pure shear (λ = 2G₁₂ = 14 GPa) and the other two mix ε₁₁ and ε₂₂. The stiffest is nearly pure fibre stretching (ε₂₂/ε₁₁ ≈ 0.018, λ = 181.0 GPa); the softest is nearly pure transverse stretching (λ = 10.0 GPa).',
       ],
     },
     {
       title: 'Turn the ply',
-      context: ['The fibres lie along x, where $\\bar C_{11} = 181.8$ GPa.'],
+      context: ['The fibres lie along x, where $\\bar C_{11} = 180.9$ GPa.'],
       show: ['principal', 'kelvin', 'matrices'],
       predict: {
         question: 'If the fibres were turned to 30°, what would happen to the three moduli λ?',
@@ -128,19 +128,19 @@ export const kelvinModes: Guide = {
         },
       },
       explain: [
-        '$\\bar C_{11}$ falls from 181.8 to 109.4 GPa while the three λ stay put. In Mandel form a rotation of the material is an orthogonal change of basis, $\\mathbf C \\to \\mathbf Q\\mathbf C\\mathbf Q^{\\mathsf T}$, which keeps eigenvalues. The entries describe the material in a frame; the Kelvin moduli describe the material.',
+        '$\\bar C_{11}$ falls from 180.9 to 108.8 GPa while the three λ stay put. In Mandel form a rotation of the material is an orthogonal change of basis, $\\mathbf C \\to \\mathbf Q\\mathbf C\\mathbf Q^{\\mathsf T}$, which keeps eigenvalues. The entries describe the material in a frame; the Kelvin moduli describe the material.',
         'So yes, a stiffness tensor has principal axes: its modes, which are directions in the space of strains, with the λ as principal values (Mehrabadi & Cowin, 1990).',
       ],
     },
     {
       title: 'The edge of a band',
       context: [
-        'Every material knob in this lab has a light band: the range that keeps the material stable, meaning that every deformation stores positive energy. In terms of modes, all six Kelvin moduli of the 3D stiffness are positive. For steel they are 2G = 153.8 GPa (five shear modes) and 3K = 500 GPa (uniform dilatation).',
+        'Every material knob in this lab has a light band: the range that keeps the material stable, meaning that every deformation stores positive energy. In terms of modes, all six Kelvin moduli of the 3D stiffness are positive. For this isotropic solid they are 2G = 153.8 GPa (five shear modes) and 3K = 500 GPa (uniform dilatation).',
       ],
-      setup: (s) => fresh('iso-steel', s, { overlays: crosses, magnification: 300 }),
+      setup: (s) => fresh('iso-2a', s, { overlays: crosses, magnification: 300 }),
       show: ['kelvin'],
       predict: {
-        question: 'As steel’s ν approaches ½, what will happen to these six moduli?',
+        question: 'As the isotropic solid’s ν approaches ½, what will happen to these six moduli?',
         options: [
           { text: 'The dilatation modulus 3K will grow without bound', correct: true },
           { text: 'One of them will drop to zero', feedback: 'With E held fixed, ν → ½ makes the solid harder to compress, not softer.' },
@@ -172,9 +172,9 @@ export const kelvinModes: Guide = {
     },
     {
       title: 'How far can ν₁₂ go?',
-      context: ['For an isotropic solid the band for ν is −1 < ν < ½. This carbon/epoxy ply has ν₁₂ = 0.28, and E₁/E₂ = 17.6.'],
+      context: ['For an isotropic solid the band for ν is −1 < ν < ½. This fibre-composite ply has ν₁₂ = 0.30, and E₁/E₂ = 18.'],
       setup: (s) => {
-        const t = fresh('ortho-cfrp', s, ply);
+        const t = fresh('ort-9b', s, ply);
         // Widen the slider to the whole admissible band, which reaches past the usual ±2.5.
         return { ...t, tracks: { ...t.tracks, nu12: { min: -4.5, max: 4.5, log: false } } };
       },
@@ -184,7 +184,7 @@ export const kelvinModes: Guide = {
         options: [
           { text: '½, as for an isotropic solid', feedback: 'The ½ comes from isotropy. Here the limit is set by the ratio of the two Young’s moduli.' },
           { text: '1', feedback: 'There is no general limit of 1 on a Poisson ratio of an anisotropic solid.' },
-          { text: 'Well above 1: about 3.7', correct: true },
+          { text: 'Well above 1: about 3.8', correct: true },
         ],
       },
       try: {
@@ -206,8 +206,8 @@ export const kelvinModes: Guide = {
         ],
       },
       explain: [
-        'The limit comes mainly from the 1–2 pair: $\\nu_{12}\\nu_{21} < 1$ with $\\nu_{21} = \\nu_{12}E_2/E_1$, so $|\\nu_{12}| < \\sqrt{E_1/E_2} \\approx 4.2$. The out-of-plane Poisson couplings tighten this to about 3.7. Near the edge a stiff mode mixing ε₁₁ and ε₂₂ becomes rigid.',
-        'So ν > ½ is not exotic in anisotropic materials; balanced angle-ply carbon/epoxy laminates reach in-plane Poisson ratios above 1. The bounds −1 < ν < ½ are a statement about isotropy, not about elasticity.',
+        'The limit comes mainly from the 1–2 pair: $\\nu_{12}\\nu_{21} < 1$ with $\\nu_{21} = \\nu_{12}E_2/E_1$, so $|\\nu_{12}| < \\sqrt{E_1/E_2} \\approx 4.2$. The out-of-plane Poisson couplings tighten this to about 3.8. Near the edge a stiff mode mixing ε₁₁ and ε₂₂ becomes rigid.',
+        'So ν > ½ is not exotic in anisotropic materials; balanced angle-ply fibre-composite laminates can reach in-plane Poisson ratios above 1. The bounds −1 < ν < ½ are a statement about isotropy, not about elasticity.',
       ],
     },
   ],

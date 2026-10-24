@@ -67,7 +67,7 @@ export function PrincipalPanel({ state, derived, dispatch, axes = true, kelvin =
           </p>
           <p className="hint">
             {coaxial.all
-              ? 'In this plane the material is isotropic, so every in-plane stress state, uniaxial or not, produces strain coaxial with it. (That holds for in-plane isotropy alone; the material itself may be anisotropic, as on copper’s (111) plane.)'
+              ? 'In this plane the material is isotropic, so every in-plane stress state, uniaxial or not, produces strain coaxial with it. (That holds for in-plane isotropy alone; the material itself may be anisotropic, as on the (111) plane of a cubic crystal.)'
               : `Uniaxial stress gives coaxial strain only along ${coaxial.angles.map((a) => `${fmt(deg(a), 3)}°`).join(', ')}: the directions where E(φ) is stationary (marked on the polar plot).`}
           </p>
         </div>

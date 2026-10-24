@@ -12,7 +12,7 @@ const preset = (id: string) => {
 
 describe('anisotropy measures', () => {
   it('isotropic: A^U = 0, E(n) is a sphere, E(φ) and G(φ) are circles', () => {
-    const { S } = preset('iso-steel');
+    const { S } = preset('iso-2a');
     expect(Math.abs(universalAnisotropy(S))).toBeLessThan(1e-12);
     const e = youngExtremes3D(S, 500);
     expectClose(e.min, 200_000, 1e-12);
@@ -22,13 +22,13 @@ describe('anisotropy measures', () => {
     expectClose(p.Gmax / p.Gmin, 1, 1e-12);
   });
 
-  it('copper: E⟨100⟩ ≈ 66.7, E⟨111⟩ ≈ 191 GPa; A^U = (6/5)(√A − 1/√A)²', () => {
-    const { S, p } = preset('cubic-cu');
+  it('cubic crystal: E⟨100⟩ ≈ 70.7, E⟨111⟩ ≈ 190 GPa; A^U = (6/5)(√A − 1/√A)²', () => {
+    const { S, p } = preset('cub-3a');
     const e = youngExtremes3D(S);
     expectClose(e.min, p.params.E1, 1e-9);
     const s3 = 1 / Math.sqrt(3);
     expectClose(e.max, youngModulus3D(S, [s3, s3, s3]), 1e-9);
-    expectClose(e.max / 1000, 191.1, 2e-3);
+    expectClose(e.max / 1000, 190.2, 2e-3);
     const A = (2 * (1 + p.params.nu12) * p.params.G12) / p.params.E1;
     expectClose(universalAnisotropy(S), 1.2 * (Math.sqrt(A) - 1 / Math.sqrt(A)) ** 2, 1e-10);
   });
@@ -47,7 +47,7 @@ describe('anisotropy measures', () => {
   });
 
   it('unidirectional composite: in-plane E ratio equals E₁/E₂ in the fibre plane', () => {
-    const { S, p } = preset('ortho-cfrp');
+    const { S, p } = preset('ort-9b');
     const ext = planeExtremes(planeCompliance(S, 'stress'), planeStiffness(S, 'stress'));
     expectClose(ext.Emax / ext.Emin, p.params.E1 / p.params.E2, 1e-6);
   });

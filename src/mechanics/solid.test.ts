@@ -17,7 +17,7 @@ const close = (a: number[], b: number[], tol = 1e-12) => {
 const all = (c: Control): Control[] => [c, c, c, c, c, c];
 
 describe('the 3D cube under mixed control', () => {
-  const S6 = S('tri-albite');
+  const S6 = S('trc-21a');
   const C6 = inverse(S6);
 
   it('all tractions prescribed: the strain is S σ; all strains prescribed: the stress is C ε', () => {
@@ -58,18 +58,18 @@ describe('the 3D cube under mixed control', () => {
     expect(mid).toBeLessThan(C6[0][0]);
   });
 
-  it('hydrostatic pressure: copper shrinks equally in every direction, carbon/epoxy does not', () => {
+  it('hydrostatic pressure: a cubic crystal shrinks equally in every direction, a fibre composite does not', () => {
     const p = { control: all('stress'), value: [-1, -1, -1, 0, 0, 0] };
-    const cu = solveMixedN(S('cubic-cu'), p).strain;
-    close(cu.slice(0, 3), [cu[0], cu[0], cu[0]], 1e-10);
-    for (const g of cu.slice(3)) expect(Math.abs(g)).toBeLessThan(1e-9 * Math.abs(cu[0]));
+    const cub = solveMixedN(S('cub-3a'), p).strain;
+    close(cub.slice(0, 3), [cub[0], cub[0], cub[0]], 1e-10);
+    for (const g of cub.slice(3)) expect(Math.abs(g)).toBeLessThan(1e-9 * Math.abs(cub[0]));
     const id = [
       [1, 0, 0],
       [0, 1, 0],
       [0, 0, 1],
     ];
-    const cf = solveMixedN(S('ortho-cfrp', id), p).strain;
-    expect(cf[1] / cf[0]).toBeGreaterThan(5); // far more compressible across the fibres
+    const ply = solveMixedN(S('ort-9b', id), p).strain;
+    expect(ply[1] / ply[0]).toBeGreaterThan(5); // far more compressible across the fibres
   });
 
   it('principal values and directions, and the misalignment between stress and strain', () => {
@@ -77,7 +77,7 @@ describe('the 3D cube under mixed control', () => {
     const pr = principal3D(T);
     expect(pr.values).toEqual([3, 2, 1].map((v) => expect.closeTo(v, 12)));
     // isotropic: stress and strain are coaxial; an anisotropic crystal under uniaxial stress off its axes is not
-    const iso = S('iso-steel');
+    const iso = S('iso-2a');
     const r = solveMixedN(iso, { control: all('stress'), value: [10, 3, -2, 1, 0.5, 4] });
     expect(principalMisalignment(principal3D(stressTensor(r.stress)), principal3D(strainTensor(r.strain)))).toBeLessThan(1e-4); // degrees; arccos near 1 amplifies round-off
     const tri = solveMixedN(S6, { control: all('stress'), value: [10, 3, -2, 1, 0.5, 4] });

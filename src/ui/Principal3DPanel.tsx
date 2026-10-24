@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { type Mat, principalMisalignment, strainTensor, stressTensor } from '../mechanics';
-import type { LabDerived } from '../app/lab';
+import type { Cut3, LabDerived } from '../app/lab';
 import { fmt, toMilli } from '../app/format';
 
 const SUB = ['₁', '₂', '₃'];
@@ -13,7 +13,7 @@ const vec = (n: number[]) => {
 };
 
 /** Principal values and directions of the cube's stress and strain, and the three Mohr circles. */
-export function Principal3DPanel({ derived }: { derived: LabDerived }) {
+export function Principal3DPanel({ derived, cut }: { derived: LabDerived; cut: Cut3 | null }) {
   const [kind, setKind] = useState<'stress' | 'strain'>('stress');
   const { response, principalStress: ps, principalStrain: pe } = derived.solid;
   const loaded = response.stress.some((v) => v !== 0) || response.strain.some((v) => v !== 0);
@@ -67,18 +67,28 @@ export function Principal3DPanel({ derived }: { derived: LabDerived }) {
               strain
             </button>
           </div>
-          {loaded ? <Mohr3D T={T} p={p} isStress={isStress} /> : <p className="hint">Load the cube to see its circles.</p>}
+          {loaded ? (
+            <Mohr3D
+              T={T}
+              p={p}
+              isStress={isStress}
+              cut={cut && (isStress ? { sn: cut.normal, tau: cut.shear } : { sn: toMilli(cut.strainNormal), tau: toMilli(cut.strainShear) })}
+            />
+          ) : (
+            <p className="hint">Load the cube to see its circles.</p>
+          )}
         </div>
       </div>
       <p className="hint">
         In 3D, the traction on every plane lies in the shaded region between the three circles, whose diameters run between the
         principal values. The dots are the x, y and z faces: their normal stress and the size of their shear.
+        {cut ? ' The magenta dot is the cut plane.' : ' Turn on “Cut plane” to place any plane among them.'}
       </p>
     </section>
   );
 }
 
-function Mohr3D({ T, p, isStress }: { T: Mat; p: number[]; isStress: boolean }) {
+function Mohr3D({ T, p, isStress, cut }: { T: Mat; p: number[]; isStress: boolean; cut: { sn: number; tau: number } | null }) {
   const W = 260;
   const H = 150;
   const [s1, s2, s3] = p;
@@ -128,6 +138,15 @@ function Mohr3D({ T, p, isStress }: { T: Mat; p: number[]; isStress: boolean }) 
             </text>
           </g>
         ))}
+        {cut && (
+          <g>
+            <line x1={X(cut.sn)} y1={y0} x2={X(cut.sn)} y2={Y(cut.tau)} className="mohr-cut-line" />
+            <circle cx={X(cut.sn)} cy={Y(cut.tau)} r={4} className="mohr-cut" />
+            <text x={X(cut.sn) + 5} y={Y(cut.tau) + 12} className="mohr-text">
+              cut
+            </text>
+          </g>
+        )}
         <text x={W - 8} y={y0 - 5} textAnchor="end" className="mohr-text">
           {isStress ? 'σ' : 'ε'}
         </text>
@@ -136,7 +155,8 @@ function Mohr3D({ T, p, isStress }: { T: Mat; p: number[]; isStress: boolean }) 
         </text>
       </svg>
       <div className="mohr-read">
-        {FACES.map((f, i) => `${f} face: ${fmt(faces[i].sn, 3, 1e-12)}, ${fmt(faces[i].tau, 3, 1e-12)}`).join(' · ')} {unit}
+        {FACES.map((f, i) => `${f} face: ${fmt(faces[i].sn, 3, 1e-12)}, ${fmt(faces[i].tau, 3, 1e-12)}`).join(' · ')}
+        {cut ? ` · cut: ${fmt(cut.sn, 3, 1e-12)}, ${fmt(cut.tau, 3, 1e-12)}` : ''} {unit}
       </div>
     </div>
   );

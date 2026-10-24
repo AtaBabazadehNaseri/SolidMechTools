@@ -19,17 +19,17 @@ export const e1VsEx: Guide = {
     {
       title: 'Two kinds of label',
       context: [
-        'Material constants carry the material’s own axis numbers. For this carbon/epoxy ply, axis 1 runs along the fibres (teal lines): E₁ = 181 GPa is Young’s modulus along the fibres and E₂ = 10.3 GPa across them.',
+        'Material constants carry the material’s own axis numbers. For this fibre-composite ply, axis 1 runs along the fibres (teal lines): E₁ = 180 GPa is Young’s modulus along the fibres and E₂ = 10 GPa across them.',
         'A test reports in the specimen axes x and y. Pulling along x with every other face free measures $E_x = \\sigma_{xx}/\\varepsilon_{xx}$. Right now the fibres lie along x, so $E_x = E_1$.',
       ],
-      setup: (s) => fresh('ortho-cfrp', s, fibres),
+      setup: (s) => fresh('ort-9b', s, fibres),
       show: ['response'],
       predict: {
         question: 'If the fibres were turned 90°, across the load, what would E₁ and Eₓ be?',
         options: [
-          { text: 'E₁ = 181 GPa, as before; Eₓ = 10.3 GPa', correct: true },
-          { text: 'Both 10.3 GPa', feedback: 'E₁ is a property of the material along its own axis 1. Turning the specimen does not change the material.' },
-          { text: 'E₁ = 10.3 GPa; Eₓ = 181 GPa, as before', feedback: 'Eₓ is what the pull along x measures. With the fibres across x, that pull stretches the ply across its fibres.' },
+          { text: 'E₁ = 180 GPa, as before; Eₓ = 10 GPa', correct: true },
+          { text: 'Both 10 GPa', feedback: 'E₁ is a property of the material along its own axis 1. Turning the specimen does not change the material.' },
+          { text: 'E₁ = 10 GPa; Eₓ = 180 GPa, as before', feedback: 'Eₓ is what the pull along x measures. With the fibres across x, that pull stretches the ply across its fibres.' },
         ],
       },
       try: {
@@ -54,10 +54,10 @@ export const e1VsEx: Guide = {
         question: 'If the fibres were at 45° to the load, roughly what would Eₓ be?',
         options: [
           {
-            text: 'About 96 GPa, halfway between E₁ and E₂',
+            text: 'About 95 GPa, halfway between E₁ and E₂',
             feedback: 'Halfway would hold if the fibres and the resin shared every load evenly. At 45° the pull also shears the ply in its own axes, and the ply is soft in shear.',
           },
-          { text: 'About 17 GPa, only a little above E₂', correct: true },
+          { text: 'About 16 GPa, only a little above E₂', correct: true },
           { text: 'About 10 GPa, the same as E₂', feedback: 'Close, but the fibres still help a little at 45°.' },
         ],
       },
@@ -72,9 +72,9 @@ export const e1VsEx: Guide = {
         },
       },
       explain: [
-        'Eₓ(45°) = 16.7 GPa. At 45° a pull along x is, in the fibre axes, equal parts σ₁₁ and σ₂₂ plus a shear τ₁₂, and the compliances add:',
+        'Eₓ(45°) = 16.3 GPa. At 45° a pull along x is, in the fibre axes, equal parts σ₁₁ and σ₂₂ plus a shear τ₁₂, and the compliances add:',
         '$\\dfrac{1}{E_x(45°)} = \\tfrac14\\Big(\\dfrac{1}{E_1} + \\dfrac{1}{E_2} + \\dfrac{1}{G_{12}} - \\dfrac{2\\nu_{12}}{E_1}\\Big)$',
-        'The fibres are stiff, but the soft terms win: $1/G_{12}$ alone (G₁₂ = 7.17 GPa) is more than half of the sum. Off its axis, a composite is only as stiff as its resin lets it be.',
+        'The fibres are stiff, but the soft terms win: $1/G_{12}$ alone (G₁₂ = 7 GPa) is more than half of the sum. Off its axis, a composite is only as stiff as its resin lets it be.',
       ],
     },
     {
@@ -97,13 +97,13 @@ export const e1VsEx: Guide = {
       observe: {
         question: 'How much of E₁ is left when the fibres are only 5° off the load?',
         options: [
-          { text: 'Nearly all of it, about 99 %', feedback: 'Read Eₓ: 154 GPa of 181.' },
+          { text: 'Nearly all of it, about 99 %', feedback: 'Read Eₓ: 153 GPa of 180.' },
           { text: 'About 85 %', correct: true },
           { text: 'About half', feedback: 'That happens nearer 10°; read the sweep there.' },
         ],
       },
       explain: [
-        'Eₓ falls fastest right next to the fibres: 15 % is lost at 5°, 40 % at 10° and 84 % at 30°. That is why fibre waviness and ply misalignments of a few degrees matter so much in composite parts, and why test coupons are cut and gripped with great care.',
+        'Eₓ falls fastest right next to the fibres: 15 % is lost at 5°, 41 % at 10° and 84 % at 30°. That is why fibre waviness and ply misalignments of a few degrees matter so much in composite parts, and why test coupons are cut and gripped with great care.',
       ],
     },
     {
@@ -132,14 +132,14 @@ export const e1VsEx: Guide = {
     },
     {
       title: 'Equal axes, unequal Eₓ',
-      context: ['A copper single crystal on its cube face, pulled along x. Its Young’s modulus is the same along all three cube axes: E₁ = E₂ = E₃ = 66.7 GPa.'],
-      setup: (s) => fresh('cubic-cu', s, fibres),
+      context: ['A cubic crystal on its cube face, pulled along x. Its Young’s modulus is the same along all three cube axes: E₁ = E₂ = E₃ = 70.7 GPa.'],
+      setup: (s) => fresh('cub-3a', s, fibres),
       show: ['response'],
       sweep: 'Ex',
       predict: {
-        question: 'With equal moduli along its axes, will copper’s Eₓ change as the crystal turns in this plane?',
+        question: 'With equal moduli along its axes, will the crystal’s Eₓ change as it turns in this plane?',
         options: [
-          { text: 'No: Eₓ = 66.7 GPa at every angle', feedback: 'Equal moduli along the axes say nothing about the directions between them.' },
+          { text: 'No: Eₓ = 70.7 GPa at every angle', feedback: 'Equal moduli along the axes say nothing about the directions between them.' },
           { text: 'Yes', correct: true },
         ],
       },
@@ -163,7 +163,7 @@ export const e1VsEx: Guide = {
         ],
       },
       explain: [
-        'Eₓ(45°) = 130 GPa, nearly twice E₁. Equal moduli along the axes do not make a material isotropic: the directions between the axes have their own stiffness, set here by the shear modulus. The guide “Why do two constants describe an isotropic solid?” shows why.',
+        'Eₓ(45°) = 134 GPa, nearly twice E₁. Equal moduli along the axes do not make a material isotropic: the directions between the axes have their own stiffness, set here by the shear modulus. The guide “Why do two constants describe an isotropic solid?” shows why.',
       ],
     },
   ],

@@ -14,9 +14,9 @@ export const planeStressInput: Guide = {
     {
       title: 'The tempting shortcut',
       context: [
-        'You have the full 3D stiffness C of a carbon/epoxy ply and need a 2D plane-stress model of a thin ply. The shortcut is to copy its in-plane entries C₁₁, C₁₂, C₂₂, C₁₆, C₂₆ and C₆₆ into the 2D matrix.',
+        'You have the full 3D stiffness C of a fibre-composite ply and need a 2D plane-stress model of a thin ply. The shortcut is to copy its in-plane entries C₁₁, C₁₂, C₂₂, C₁₆, C₂₆ and C₆₆ into the 2D matrix.',
       ],
-      setup: (s) => fresh('ortho-cfrp', s, { overlays: { materialAxes: true, materialLines: true } }),
+      setup: (s) => fresh('ort-9b', s, { overlays: { materialAxes: true, materialLines: true } }),
       show: ['matrices'],
       predict: {
         question: 'Is the in-plane (1, 2, 6) block of the 3D C the right plane-stress stiffness?',
@@ -71,7 +71,7 @@ export const planeStressInput: Guide = {
         ],
       },
       explain: [
-        'For this ply $\\bar C_{22}$ rises from 10.35 to 12.39 GPa (+20 %) and $\\bar C_{12}$ from 2.90 to 4.88 GPa (+68 %). $\\bar C_{11}$ barely moves (+1 %) because the fibres dominate it.',
+        'For this ply $\\bar C_{22}$ rises from 10.05 to 12.05 GPa (+20 %) and $\\bar C_{12}$ from 3.02 to 5.08 GPa (+69 %). $\\bar C_{11}$ barely moves (+1 %) because the fibres dominate it.',
         'Copying the 3D block into a plane-stress model therefore makes the ply too stiff across the fibres and gets its Poisson coupling wrong by more than half.',
         'The two are related by a Schur complement. With a the in-plane and b the out-of-plane components, $\\bar C_{\\mathrm{PS}} = C_{aa} - C_{ab}C_{bb}^{-1}C_{ba}$, where $C_{aa}$ is the plane-strain block. Plane stress subtracts a positive semi-definite term from it, which is why releasing the out-of-plane strains can only soften the response.',
         '“Stiffer” here is meant in the energy sense: the difference between the two matrices is positive semi-definite. Every diagonal entry rises, but an off-diagonal entry need not.',
@@ -79,8 +79,8 @@ export const planeStressInput: Guide = {
     },
     {
       title: 'Near-incompressible material',
-      context: ['Now an isotropic material, steel, in plane stress.'],
-      setup: (s) => fresh('iso-steel', s),
+      context: ['Now an isotropic material (E = 200 GPa, ν = 0.30), in plane stress.'],
+      setup: (s) => fresh('iso-2a', s),
       show: ['matrices'],
       predict: {
         question: 'As ν approaches ½, in which mode will C̄₁₁ grow without bound?',

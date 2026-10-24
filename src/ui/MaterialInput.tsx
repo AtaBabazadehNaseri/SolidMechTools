@@ -55,11 +55,11 @@ const ORIENTATION_LABEL: Record<OrientationMode, string> = {
   cosines: 'Direction cosines of axes 1, 2, 3',
 };
 
-/** In-plane examples for the 2D classes (MPa), from the presets' in-plane constants. */
+/** In-plane examples for the 2D classes (MPa): the presets' in-plane constants. */
 const PLANE_EXAMPLES: Record<PlaneClassId, Record<string, number>> = {
   'plane-isotropic': { E1: 200_000, nu12: 0.3 },
-  'plane-square': { E1: 66_690, nu12: 0.4189, G12: 75_400 },
-  'plane-orthotropic': { E1: 181_000, E2: 10_300, nu12: 0.28, G12: 7_170 },
+  'plane-square': { E1: 70_690, nu12: 0.4138, G12: 75_000 },
+  'plane-orthotropic': { E1: 180_000, E2: 10_000, nu12: 0.3, G12: 7_000 },
   'plane-anisotropic': { E1: 50_000, E2: 20_000, nu12: 0.25, G12: 10_000, eta12_1: 0.8, eta12_2: -0.3 },
 };
 
@@ -69,7 +69,7 @@ const pct = (d: number) => (d < 1e-12 ? 'exact' : `${fmt(100 * d, 2)} %`);
 const unitLabel = (kind: MatrixKind, u: Unit) => (kind === 'stiffness' ? u : `1/${u}`);
 
 function exampleMatrix(dim: Dimension, plane: Plane, kind: MatrixKind, order: OrderId, shear: ShearConvention, unit: Unit): string {
-  const p = PRESETS.find((x) => x.id === (dim === 3 ? 'cubic-cu' : 'ortho-cfrp'))!;
+  const p = PRESETS.find((x) => x.id === (dim === 3 ? 'cub-3a' : 'ort-9b'))!;
   const S6 = SYMMETRY_CLASSES[p.classId].build(p.params);
   let S: Mat;
   if (dim === 3) S = S6;
@@ -289,7 +289,7 @@ export function MaterialInput({ onLoad, onClose }: Props) {
             />
             <div className="om-row">
               <button className="mini" onClick={() => setText(exampleMatrix(dim, plane, kind, order, shear, unit))}>
-                Fill with an example ({dim === 3 ? 'copper single crystal' : 'carbon/epoxy lamina'}, in the notation above)
+                Fill with an example ({dim === 3 ? 'the cubic crystal CUB-3A' : 'the fibre-composite lamina of ORT-9B'}, in the notation above)
               </button>
               <span className="hint">Numbers separated by spaces, tabs, commas or semicolons; lines starting with # are skipped.</span>
             </div>

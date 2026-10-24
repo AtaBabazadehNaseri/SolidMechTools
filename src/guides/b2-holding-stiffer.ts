@@ -17,10 +17,10 @@ export const holdingStiffer: Guide = {
     {
       title: 'Hold the sides',
       context: [
-        'A steel sheet in uniaxial tension: σxx on the x faces, every other face traction-free. The stiffness measured in this test, dσxx/dεxx, is Young’s modulus, E = 200 GPa.',
+        'A sheet of an isotropic solid (E = 200 GPa, ν = 0.30) in uniaxial tension: σxx on the x faces, every other face traction-free. The stiffness measured in this test, dσxx/dεxx, is Young’s modulus, E = 200 GPa.',
         'Clamping the y faces so that the sheet cannot narrow makes a different test of the same sheet.',
       ],
-      setup: (s) => fresh('iso-steel', s, { magnification: 300 }),
+      setup: (s) => fresh('iso-2a', s, { magnification: 300 }),
       show: ['response'],
       predict: {
         question: 'With the y faces held so that εyy = 0, will the sheet be stiffer along x, softer, or the same?',
@@ -55,7 +55,7 @@ export const holdingStiffer: Guide = {
     },
     {
       title: 'Hold the shear instead',
-      context: ['Same steel sheet, with the y faces free again. This time the shear γxy is held at zero, as stiff grips would hold it.'],
+      context: ['Same isotropic sheet, with the y faces free again. This time the shear γxy is held at zero, as stiff grips would hold it.'],
       setup: (s) => withExperiment(s, 'uniaxial'),
       show: ['response'],
       try: {
@@ -77,15 +77,15 @@ export const holdingStiffer: Guide = {
         ],
       },
       explain: [
-        'Pulled along x, steel does not try to shear, so holding γxy at zero costs nothing: no reaction and no change. A hold stiffens a test only if the free specimen would have moved the way the hold forbids.',
+        'Pulled along x, an isotropic sheet does not try to shear, so holding γxy at zero costs nothing: no reaction and no change. A hold stiffens a test only if the free specimen would have moved the way the hold forbids.',
       ],
     },
     {
       title: 'Grips on an off-axis coupon',
       context: [
-        'A carbon/epoxy coupon with its fibres at 30° to the load. Free, it shears visibly under the pull ($\\gamma_{xy} \\approx -1.35\\,\\varepsilon_{xx}$) and its stiffness is $E_x = 28.8$ GPa. Stiff grips stop its ends from shearing.',
+        'A fibre-composite coupon with its fibres at 30° to the load. Free, it shears visibly under the pull ($\\gamma_{xy} \\approx -1.36\\,\\varepsilon_{xx}$) and its stiffness is $E_x = 28.1$ GPa. Stiff grips stop its ends from shearing.',
       ],
-      setup: (s) => fresh('ortho-cfrp', s, { ...fibres, thetaDeg: 30 }),
+      setup: (s) => fresh('ort-9b', s, { ...fibres, thetaDeg: 30 }),
       show: ['response'],
       predict: {
         question: 'With the shear held at zero, how much stiffer will the coupon be?',
@@ -117,16 +117,16 @@ export const holdingStiffer: Guide = {
         ],
       },
       explain: [
-        'With γxy held, a reaction $\\tau_{xy} \\approx 0.41\\,\\sigma_{xx}$ appears and the stiffness rises from 28.8 to 64.8 GPa, 2.25 times: $1/(\\bar S_{11} - \\bar S_{16}^2/\\bar S_{66})$ instead of $1/\\bar S_{11}$. Holding the sides adds only 2 %, because this coupon’s Poisson coupling is weak compared with its shear coupling.',
+        'With γxy held, a reaction $\\tau_{xy} \\approx 0.41\\,\\sigma_{xx}$ appears and the stiffness rises from 28.1 to 63.7 GPa, 2.26 times: $1/(\\bar S_{11} - \\bar S_{16}^2/\\bar S_{66})$ instead of $1/\\bar S_{11}$. Holding the sides adds only 2 %, because this coupon’s Poisson coupling is weak compared with its shear coupling.',
         'This is the classic end-constraint problem of off-axis tensile tests (Pagano & Halpin, 1968). Real grips hold only the ends, so the coupon bends into an S shape, and the measured modulus lies between the free and the fully held values; long, slender coupons come closer to the free one. This lab shows the two limits.',
       ],
     },
     {
       title: 'Hold the thickness',
       context: [
-        'Back to steel in uniaxial tension, with the sides and the shear free. So far the sheet could change thickness (plane stress). In plane strain the thickness is held instead, εzz = 0, as in a long body constrained along z.',
+        'Back to the isotropic sheet in uniaxial tension, with the sides and the shear free. So far the sheet could change thickness (plane stress). In plane strain the thickness is held instead, εzz = 0, as in a long body constrained along z.',
       ],
-      setup: (s) => fresh('iso-steel', s, { magnification: 300 }),
+      setup: (s) => fresh('iso-2a', s, { magnification: 300 }),
       show: ['response', 'ladder'],
       try: {
         instructions: ['Switch to plane strain and read dσxx/dεxx, and the ladder.'],

@@ -38,7 +38,7 @@ describe('plane strain', () => {
   });
 
   it('orthotropic reduced compliance S̄ᵢⱼ = Sᵢⱼ − Sᵢ₃Sⱼ₃/S₃₃ (Lekhnitskii)', () => {
-    const S6 = preset('ortho-bone');
+    const S6 = preset('ort-9a');
     const S2 = planeCompliance(S6, 'strain');
     for (const [a, i] of IN_PLANE.entries())
       for (const [b, j] of IN_PLANE.entries()) expectClose(S2[a][b], S6[i][j] - (S6[i][2] * S6[j][2]) / S6[2][2], 1e-12, 1e-18);
@@ -64,7 +64,7 @@ describe('plane strain', () => {
   });
 
   it('3D consistency: embedding the in-plane strain with εzz = γyz = γxz = 0 recovers σ = C̄ε and the reactions', () => {
-    const S6 = rotateComplianceVoigt(preset('tri-albite'), rotationZ(0.4));
+    const S6 = rotateComplianceVoigt(preset('trc-21a'), rotationZ(0.4));
     const C6 = inverse(S6);
     const r = solveMixed(planeCompliance(S6, 'strain'), { control: ['stress', 'stress', 'stress'], value: [40, -10, 7] });
     const eps6 = [r.strain[0], r.strain[1], 0, 0, 0, r.strain[2]];
@@ -92,7 +92,7 @@ describe('plane strain', () => {
 describe('directional extension–shear coupling', () => {
   it('γ_nt/ε_nn = ½ E · d(1/E)/dφ, so it vanishes exactly where E(φ) is stationary', () => {
     for (const mode of ['stress', 'strain'] as const) {
-      const S6 = rotateComplianceVoigt(preset('mono-coupled'), rotationZ(0.3));
+      const S6 = rotateComplianceVoigt(preset('mon-13b'), rotationZ(0.3));
       const S2 = planeCompliance(S6, mode);
       const C2 = planeStiffness(S6, mode);
       for (const phi of [0.1, 0.7, 1.3, 2.2, 2.9]) {

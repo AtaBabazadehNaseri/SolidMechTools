@@ -333,6 +333,7 @@ export function toLoadable(e: Entry, a: Analysis, opts: { classId: SymmetryClass
     preset: {
       id: 'user',
       name: opts.name.trim() || 'Your material',
+      kind: e.dimension === 2 ? 'your 2D data' : 'your material',
       classId: opts.classId,
       params,
       section: e.dimension === 2 || identity ? 'n3' : 'custom',

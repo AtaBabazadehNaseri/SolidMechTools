@@ -38,7 +38,7 @@ describe('plane-stress benchmarks', () => {
   });
 
   it('Q̄ is not the (1,2,6) block of C, and the 3D state has zero out-of-plane stress', () => {
-    const S6 = preset('ortho-cfrp');
+    const S6 = preset('ort-9b');
     const C6 = inverse(S6);
     const Q = psStiffness(S6);
     expect(maxAbsDiff(Q, submatrix(C6, IN_PLANE, IN_PLANE))).toBeGreaterThan(1);
@@ -53,13 +53,13 @@ describe('plane-stress benchmarks', () => {
 
 describe('normal–shear coupling', () => {
   it('aligned isotropic and orthotropic materials do not shear under uniaxial stress', () => {
-    for (const S6 of [iso(70_000, 0.33), preset('ortho-cfrp')]) {
+    for (const S6 of [iso(70_000, 0.33), preset('ort-9b')]) {
       expect(solveMixed(psCompliance(S6), uniaxial(50)).strain[2]).toBe(0);
     }
   });
 
   it('monoclinic material shears under uniaxial stress; sign follows η₁₂,₁', () => {
-    const p = PRESETS.find((q) => q.id === 'mono-coupled')!;
+    const p = PRESETS.find((q) => q.id === 'mon-13b')!;
     const build = (eta: number) => SYMMETRY_CLASSES.monoclinic.build({ ...p.params, eta12_1: eta });
     const plus = solveMixed(psCompliance(build(0.5)), uniaxial(50));
     const minus = solveMixed(psCompliance(build(-0.5)), uniaxial(50));
@@ -134,7 +134,7 @@ describe('mixed control', () => {
 
 describe('directional moduli', () => {
   it('E(0) = 1/S̄₁₁, Q_n(0) = Q̄₁₁, and E(φ) ≤ Q_n(φ) everywhere', () => {
-    const S2 = psCompliance(preset('mono-coupled'));
+    const S2 = psCompliance(preset('mon-13b'));
     const Q2 = inverse(S2);
     const d0 = directionalModuli(S2, Q2, 0);
     expectClose(d0.E, 1 / S2[0][0]);
@@ -155,7 +155,7 @@ describe('directional moduli', () => {
 
 describe('directional Poisson ratio', () => {
   it('ν(0) = νxy, ν(90°) = νyx, reciprocity ν(φ)/E(φ) = ν(φ+90°)/E(φ+90°)', () => {
-    const S6 = preset('mono-coupled');
+    const S6 = preset('mon-13b');
     const S2 = psCompliance(S6);
     const C2 = psStiffness(S6);
     expectClose(directionalModuli(S2, C2, 0).nu, -S2[1][0] / S2[0][0], 1e-12);
@@ -167,11 +167,11 @@ describe('directional Poisson ratio', () => {
     }
   });
 
-  it('isotropic: ν(φ) = ν in every direction; copper (001): ν goes negative along ⟨110⟩', () => {
+  it('isotropic: ν(φ) = ν in every direction; cubic crystal (001): ν goes negative along ⟨110⟩', () => {
     const S2 = psCompliance(iso(1000, 0.3));
     const C2 = psStiffness(iso(1000, 0.3));
     for (const phi of [0, 0.5, 1.1]) expectClose(directionalModuli(S2, C2, phi).nu, 0.3, 1e-12);
-    const cu = preset('cubic-cu');
-    expect(directionalModuli(psCompliance(cu), psStiffness(cu), Math.PI / 4).nu).toBeCloseTo(-0.136, 2);
+    const cub = preset('cub-3a');
+    expect(directionalModuli(psCompliance(cub), psStiffness(cub), Math.PI / 4).nu).toBeCloseTo(-0.109, 3);
   });
 });

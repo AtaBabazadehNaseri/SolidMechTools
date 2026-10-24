@@ -10,21 +10,21 @@ export const negativePoisson: Guide = {
   id: 'negative-poisson',
   track: 'Level 1',
   title: 'Can a solid get wider when you stretch it?',
-  summary: "Poisson's ratio from ordinary to auxetic, why −1 < ν < ½, and a common metal for which those isotropic bounds stop applying.",
+  summary: "Poisson's ratio from ordinary to auxetic, why −1 < ν < ½, and a cubic crystal for which those isotropic bounds stop applying.",
   steps: [
     {
-      title: 'Pull on steel',
+      title: 'Pull on an isotropic sheet',
       context: [
-        'This is a thin sheet of steel, not yet loaded. Once you answer, a tensile traction (blue arrows) is applied to the x faces; every other face stays traction-free.',
+        'This is a thin sheet of an isotropic solid, not yet loaded. Once you answer, a tensile traction (blue arrows) is applied to the x faces; every other face stays traction-free.',
       ],
-      setup: (s) => unloaded(fresh('iso-steel', s, { magnification: 300 })),
+      setup: (s) => unloaded(fresh('iso-2a', s, { magnification: 300 })),
       show: ['response'],
       predict: {
-        question: 'Steel has a Poisson’s ratio ν = 0.30. Stretched along x, what will the sheet do along y?',
+        question: 'This solid has a Poisson’s ratio ν = 0.30, typical of many metals. Stretched along x, what will the sheet do along y?',
         options: [
           { text: 'It gets narrower', correct: true },
           { text: 'It keeps its width', feedback: 'That would need ν = 0, which is unusual for a metal. Look at the outline and at εyy.' },
-          { text: 'It gets wider', feedback: 'That would need a negative ν; steel’s is +0.30. Look at the outline and at εyy.' },
+          { text: 'It gets wider', feedback: 'That would need a negative ν; this one is +0.30. Look at the outline and at εyy.' },
         ],
         reveal: (s) => withExperiment(s, 'uniaxial'),
       },
@@ -87,7 +87,7 @@ export const negativePoisson: Guide = {
     },
     {
       title: 'How far can ν go?',
-      context: ['You have taken ν from steel’s 0.30 to below −0.3, and the sheet still behaves sensibly.'],
+      context: ['You have taken ν from 0.30 to below −0.3, and the sheet still behaves sensibly.'],
       show: ['matrices', 'response'],
       predict: {
         question: "For an isotropic solid, which values of Poisson's ratio are physically allowed?",
@@ -133,23 +133,23 @@ export const negativePoisson: Guide = {
       ],
     },
     {
-      title: 'A metal that gets wider',
+      title: 'A crystal that gets wider',
       context: [
-        'Copper is an ordinary metal, but a single crystal of it is anisotropic: its Poisson ratio depends on the direction you pull and the direction you measure. Pulled along a cube axis ⟨100⟩, its in-plane ν = 0.42. Pulled along a face diagonal ⟨110⟩ and measured across the other face diagonal, ν = −0.14.',
+        'Polycrystalline metals are close to isotropic, but a single crystal is not. This cubic crystal’s Poisson ratio depends on the direction you pull and the direction you measure. Pulled along a cube axis ⟨100⟩, its in-plane ν = 0.41. Pulled along a face diagonal ⟨110⟩ and measured across the other face diagonal, ν = −0.11.',
         'The teal arrows and lines are the crystal’s cube axes. The load is along x, which is now a cube axis.',
       ],
-      // The in-plane widening is only 14 % of the stretch, so magnify enough to see it.
-      setup: (s) => fresh('cubic-cu', s, { overlays: { materialAxes: true, materialLines: true }, magnification: 800 }),
+      // The in-plane widening is only 11 % of the stretch, so magnify enough to see it.
+      setup: (s) => fresh('cub-3a', s, { overlays: { materialAxes: true, materialLines: true }, magnification: 800 }),
       show: ['response'],
       predict: {
         question: 'Suppose the crystal is turned so that the pull runs along a face diagonal. Which ν applies, and what happens to the width?',
         options: [
           {
-            text: 'ν = 0.42, since it is still copper: the sheet narrows',
-            feedback: 'In an anisotropic crystal ν belongs to a pair of directions, not to the material alone. Pulling along ⟨110⟩ and measuring across it is the pair with ν = −0.14.',
+            text: 'ν = 0.41, since it is still the same crystal: the sheet narrows',
+            feedback: 'In an anisotropic crystal ν belongs to a pair of directions, not to the material alone. Pulling along ⟨110⟩ and measuring across it is the pair with ν = −0.11.',
           },
-          { text: 'ν = −0.14: the sheet gets slightly wider', correct: true },
-          { text: 'ν = −0.14: the sheet narrows, but less', feedback: 'A negative ν means εyy has the same sign as εxx: under tension the width grows.' },
+          { text: 'ν = −0.11: the sheet gets slightly wider', correct: true },
+          { text: 'ν = −0.11: the sheet narrows, but less', feedback: 'A negative ν means εyy has the same sign as εxx: under tension the width grows.' },
         ],
       },
       try: {
@@ -175,7 +175,7 @@ export const negativePoisson: Guide = {
         ],
       },
       explain: [
-        'Along ⟨110⟩ copper is auxetic in the plane, $\\nu_{xy} \\approx -0.14$, while its thickness contracts strongly, $\\nu_{xz} \\approx 0.82$, twice the cube-axis value. Most cubic metals have such a direction (Baughman et al., Nature 1998).',
+        'Along ⟨110⟩ this crystal is auxetic in the plane, $\\nu_{xy} \\approx -0.11$, while its thickness contracts strongly, $\\nu_{xz} \\approx 0.78$, nearly twice the cube-axis value. Many cubic metal crystals have such a direction (Baughman et al., Nature 392, 1998).',
         'The isotropic bounds −1 < ν < ½ do not apply to anisotropic materials: their directional Poisson ratios can fall well outside them.',
       ],
     },
@@ -186,7 +186,7 @@ export const negativePoisson: Guide = {
       ],
       show: ['response'],
       predict: {
-        question: 'With the thickness held, will the copper still get wider along y?',
+        question: 'With the thickness held, will the crystal still get wider along y?',
         options: [
           {
             text: 'Yes, nothing in the plane changed',
@@ -207,13 +207,13 @@ export const negativePoisson: Guide = {
       observe: {
         question: 'What does it take to hold the thickness?',
         options: [
-          { text: 'A tensile reaction σzz, about 0.42 σxx', correct: true },
+          { text: 'A tensile reaction σzz, about 0.41 σxx', correct: true },
           { text: 'A compressive reaction σzz', feedback: 'Free, the sheet would get thinner; holding it takes a pull. Read the sign of σzz.' },
-          { text: 'No reaction at all', feedback: 'Free, the thickness strain was large (ν_xz ≈ 0.82). Holding it at zero takes a stress: read σzz.' },
+          { text: 'No reaction at all', feedback: 'Free, the thickness strain was large (ν_xz ≈ 0.78). Holding it at zero takes a stress: read σzz.' },
         ],
       },
       explain: [
-        'Free, the sheet would thin strongly ($\\nu_{xz} \\approx 0.82$). Holding εzz = 0 therefore takes a tensile reaction $\\sigma_{zz} \\approx 0.42\\,\\sigma_{xx}$, and that σzz contracts the sheet along y through the ordinary Poisson coupling between [001] and ⟨110⟩. This outweighs the in-plane auxetic tendency.',
+        'Free, the sheet would thin strongly ($\\nu_{xz} \\approx 0.78$). Holding εzz = 0 therefore takes a tensile reaction $\\sigma_{zz} \\approx 0.41\\,\\sigma_{xx}$, and that σzz contracts the sheet along y through the ordinary Poisson coupling between [001] and ⟨110⟩. This outweighs the in-plane auxetic tendency.',
         'Whether a material looks auxetic depends on what else is constrained: the same crystal, pulled the same way, contracts here.',
       ],
     },

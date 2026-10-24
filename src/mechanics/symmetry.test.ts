@@ -18,69 +18,69 @@ const snapTo = (id: string, params: Params, key: string, label: RegExp) => {
 
 describe('effective symmetry', () => {
   it('each preset is detected as its class (the composite as transversely isotropic about its fibres)', () => {
-    expect(symOf('iso-steel')).toEqual({ classId: 'isotropic', axis: null });
-    expect(symOf('cubic-cu')).toEqual({ classId: 'cubic', axis: null });
-    expect(symOf('hex-ti')).toEqual({ classId: 'hexagonal', axis: 2 });
-    expect(symOf('tetra-rutile')).toEqual({ classId: 'tetragonal', axis: 2 });
-    expect(symOf('trig-quartz')).toEqual({ classId: 'trigonal', axis: 2 });
-    expect(symOf('ortho-bone')).toEqual({ classId: 'orthotropic', axis: null });
-    expect(symOf('ortho-cfrp')).toEqual({ classId: 'hexagonal', axis: 0 });
-    expect(symOf('mono-diopside')).toEqual({ classId: 'monoclinic', axis: 2 });
-    expect(symOf('mono-coupled')).toEqual({ classId: 'monoclinic', axis: 2 });
-    expect(symOf('tri-albite')).toEqual({ classId: 'triclinic', axis: null });
+    expect(symOf('iso-2a')).toEqual({ classId: 'isotropic', axis: null });
+    expect(symOf('cub-3a')).toEqual({ classId: 'cubic', axis: null });
+    expect(symOf('hex-5a')).toEqual({ classId: 'hexagonal', axis: 2 });
+    expect(symOf('tet-6a')).toEqual({ classId: 'tetragonal', axis: 2 });
+    expect(symOf('trg-6a')).toEqual({ classId: 'trigonal', axis: 2 });
+    expect(symOf('ort-9a')).toEqual({ classId: 'orthotropic', axis: null });
+    expect(symOf('ort-9b')).toEqual({ classId: 'hexagonal', axis: 0 });
+    expect(symOf('mon-13a')).toEqual({ classId: 'monoclinic', axis: 2 });
+    expect(symOf('mon-13b')).toEqual({ classId: 'monoclinic', axis: 2 });
+    expect(symOf('trc-21a')).toEqual({ classId: 'triclinic', axis: null });
   });
 
-  it('the diopside re-expression keeps it monoclinic about axis 3 and positive definite', () => {
-    const p = presetById('mono-diopside');
+  it('the MON-13A re-expression keeps it monoclinic about axis 3 and positive definite', () => {
+    const p = presetById('mon-13a');
     expect(isPositiveDefinite(SYMMETRY_CLASSES.monoclinic.build(p.params))).toBe(true);
     expect(MONOCLINIC_B_TO_3.length).toBe(3);
   });
 });
 
 describe('snapping raises symmetry', () => {
-  it('cubic copper: snapping G to its isotropic value makes it isotropic', () => {
-    const p = presetById('cubic-cu');
-    expect(symOf('cubic-cu', snapTo('cubic-cu', p.params, 'G12', /isotropic/))).toEqual({ classId: 'isotropic', axis: null });
+  it('cubic: snapping G to its isotropic value makes it isotropic', () => {
+    const p = presetById('cub-3a');
+    expect(symOf('cub-3a', snapTo('cub-3a', p.params, 'G12', /isotropic/))).toEqual({ classId: 'isotropic', axis: null });
   });
 
-  it('cubic copper: snapping ν instead also makes it isotropic (one anisotropy degree of freedom)', () => {
-    const p = presetById('cubic-cu');
-    expect(symOf('cubic-cu', snapTo('cubic-cu', p.params, 'nu12', /isotropic/))).toEqual({ classId: 'isotropic', axis: null });
+  it('cubic: snapping ν instead also makes it isotropic (one anisotropy degree of freedom)', () => {
+    const p = presetById('cub-3a');
+    expect(symOf('cub-3a', snapTo('cub-3a', p.params, 'nu12', /isotropic/))).toEqual({ classId: 'isotropic', axis: null });
   });
 
-  it('rutile: snapping G₁₂ to its in-plane isotropic value makes it hexagonal', () => {
-    const p = presetById('tetra-rutile');
-    expect(symOf('tetra-rutile', snapTo('tetra-rutile', p.params, 'G12', /isotropic/))).toEqual({ classId: 'hexagonal', axis: 2 });
+  it('tetragonal: snapping G₁₂ to its in-plane isotropic value makes it hexagonal', () => {
+    const p = presetById('tet-6a');
+    expect(symOf('tet-6a', snapTo('tet-6a', p.params, 'G12', /isotropic/))).toEqual({ classId: 'hexagonal', axis: 2 });
   });
 
-  it('bone: E₂ → E₁, G₂₃ → G₁₃, then G₁₂ → isotropic gives transverse isotropy about the femoral axis', () => {
-    let q = presetById('ortho-bone').params;
-    q = snapTo('ortho-bone', q, 'E2', /= E₁/);
-    expect(symOf('ortho-bone', q).classId).toBe('orthotropic'); // G₁₃ ≠ G₂₃ still breaks the 4-fold axis
-    q = snapTo('ortho-bone', q, 'G23', /= G₁₃/);
-    expect(symOf('ortho-bone', q)).toEqual({ classId: 'tetragonal', axis: 2 });
-    q = snapTo('ortho-bone', q, 'G12', /isotropic/);
-    expect(symOf('ortho-bone', q)).toEqual({ classId: 'hexagonal', axis: 2 });
+  it('orthotropic: E₂ → E₁, G₂₃ → G₁₃, then G₁₂ → isotropic gives transverse isotropy about axis 3', () => {
+    let q = presetById('ort-9a').params;
+    q = snapTo('ort-9a', q, 'E2', /= E₁/);
+    expect(symOf('ort-9a', q).classId).toBe('orthotropic'); // G₁₃ ≠ G₂₃ still breaks the 4-fold axis
+    q = snapTo('ort-9a', q, 'G23', /= G₁₃/);
+    expect(symOf('ort-9a', q)).toEqual({ classId: 'tetragonal', axis: 2 });
+    q = snapTo('ort-9a', q, 'G12', /isotropic/);
+    expect(symOf('ort-9a', q)).toEqual({ classId: 'hexagonal', axis: 2 });
   });
 
   it('monoclinic: η couplings snap to zero, which restores orthotropy', () => {
-    let q = presetById('mono-coupled').params;
-    for (const k of ['eta12_1', 'eta12_2', 'eta12_3', 'mu13_23']) q = snapTo('mono-coupled', q, k, /^0/);
-    expect(symOf('mono-coupled', q)).toEqual({ classId: 'orthotropic', axis: null });
+    let q = presetById('mon-13b').params;
+    for (const k of ['eta12_1', 'eta12_2', 'eta12_3', 'mu13_23']) q = snapTo('mon-13b', q, k, /^0/);
+    expect(symOf('mon-13b', q)).toEqual({ classId: 'orthotropic', axis: null });
   });
 });
 
 describe('matrix pattern', () => {
   it('orthotropic has 12 nonzero entries per triangle-and-diagonal count; triclinic has none zero', () => {
-    const ortho = compliancePattern(SYMMETRY_CLASSES.orthotropic, presetById('ortho-bone').params);
+    const ortho = compliancePattern(SYMMETRY_CLASSES.orthotropic, presetById('ort-9a').params);
     const nz = ortho.flat().filter((c) => c.kind !== 'zero').length;
     expect(nz).toBe(12); // 3×3 normal block (9) + 3 shear diagonals
-    const tri = compliancePattern(SYMMETRY_CLASSES.triclinic, presetById('tri-albite').params);
+    const tri = compliancePattern(SYMMETRY_CLASSES.triclinic, presetById('trc-21a').params);
     expect(tri.flat().every((c) => c.kind === 'free')).toBe(true);
   });
 
   it('cubic ties all three normal diagonals, the three Poisson terms and the three shear diagonals', () => {
-    const pat = compliancePattern(SYMMETRY_CLASSES.cubic, presetById('cubic-cu').params);
+    const pat = compliancePattern(SYMMETRY_CLASSES.cubic, presetById('cub-3a').params);
     const groups = new Set(pat.flat().flatMap((c) => (c.kind === 'tied' ? [c.group] : [])));
     expect(groups.size).toBe(3);
   });

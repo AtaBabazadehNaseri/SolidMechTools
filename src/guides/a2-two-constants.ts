@@ -4,14 +4,14 @@ import { fmt } from '../app/format';
 import type { Guide } from './types';
 import { fresh, unloaded, withExperiment, withParam } from './helpers';
 
-const STEEL_E = 200_000;
-const STEEL_NU = 0.3;
-const STEEL_G = STEEL_E / (2 * (1 + STEEL_NU));
+const ISO_E = 200_000;
+const ISO_NU = 0.3;
+const ISO_G = ISO_E / (2 * (1 + ISO_NU));
 
 /** G that would make a cubic material with these E and ν isotropic. */
 const gIso = (s: LabState) => s.params.E1 / (2 * (1 + s.params.nu12));
-const steelCubic = (s: LabState) =>
-  fresh('cubic-cu', s, { params: { E1: STEEL_E, nu12: STEEL_NU, G12: STEEL_G }, overlays: { materialAxes: true, materialLines: true }, magnification: 300 });
+const isoLikeCubic = (s: LabState) =>
+  fresh('cub-3a', s, { params: { E1: ISO_E, nu12: ISO_NU, G12: ISO_G }, overlays: { materialAxes: true, materialLines: true }, magnification: 300 });
 
 export const twoConstants: Guide = {
   id: 'two-constants',
@@ -22,9 +22,9 @@ export const twoConstants: Guide = {
     {
       title: 'Cut a sheared sheet',
       context: [
-        'A steel sheet, about to be loaded in pure shear: shear tractions τxy on all four faces and no normal tractions. The magenta line is a cut through the sheet, and the magenta arrows will show the traction acting on it.',
+        'A sheet of an isotropic solid (E = 200 GPa, ν = 0.30), about to be loaded in pure shear: shear tractions τxy on all four faces and no normal tractions. The magenta line is a cut through the sheet, and the magenta arrows will show the traction acting on it.',
       ],
-      setup: (s) => unloaded(fresh('iso-steel', s, { overlays: { cut: true }, cutDeg: 0, magnification: 300 })),
+      setup: (s) => unloaded(fresh('iso-2a', s, { overlays: { cut: true }, cutDeg: 0, magnification: 300 })),
       show: ['principal'],
       predict: {
         question: 'Is there a plane through the sheet that carries only a normal traction, with no shear at all?',
@@ -67,7 +67,7 @@ export const twoConstants: Guide = {
       ],
       show: ['matrices', 'response'],
       predict: {
-        question: 'The sheet is steel, an isotropic material. Knowing only its E and ν, can you predict how much it shears?',
+        question: 'The sheet is an isotropic material. Knowing only its E and ν, can you predict how much it shears?',
         options: [
           { text: 'Yes: G follows from E and ν', correct: true },
           { text: 'No: G is a separate property that must be measured', feedback: 'For many materials it is. For an isotropic one it is fixed by E and ν, as the 45° picture shows.' },
@@ -76,15 +76,15 @@ export const twoConstants: Guide = {
       explain: [
         'Along the tension diagonal the strain is $\\varepsilon_1 = (\\tau + \\nu\\tau)/E$: its own tension plus the Poisson effect of the compression. The shear strain is $\\gamma_{xy} = 2\\varepsilon_1$, so',
         '$G = \\dfrac{\\tau}{\\gamma_{xy}} = \\dfrac{E}{2(1+\\nu)}$',
-        'which is 76.9 GPa for steel ($G_{xy}$ in the strip under the matrices). This is not a definition of G. It holds because an isotropic material must respond to the 45° description exactly as it would to the same loading along x.',
+        'which is 76.9 GPa here ($G_{xy}$ in the strip under the matrices). This is not a definition of G. It holds because an isotropic material must respond to the 45° description exactly as it would to the same loading along x.',
       ],
     },
     {
       title: 'Let G go free',
       context: [
-        'This material has steel’s E and ν along the x, y and z axes, but its shear modulus G is an independent constant. It starts at the isotropic value, so E(φ) is still a circle.',
+        'This material has the same E and ν along the x, y and z axes, but its shear modulus G is an independent constant. It starts at the isotropic value, so E(φ) is still a circle.',
       ],
-      setup: steelCubic,
+      setup: isoLikeCubic,
       show: ['directional', 'response'],
       predict: {
         question: 'If G rises but E stays the same along x, y and z, is the material still isotropic?',
@@ -106,7 +106,7 @@ export const twoConstants: Guide = {
         question: 'Where are the lobes of E(φ) now?',
         options: [
           { text: 'On the diagonals, at 45° to the axes', correct: true },
-          { text: 'On the axes', feedback: 'Along the axes E is still steel’s 200 GPa; look between them.' },
+          { text: 'On the axes', feedback: 'Along the axes E is still 200 GPa; look between them.' },
           { text: 'There are no lobes: E(φ) is still a circle', feedback: 'Check that G is above the snap point marked “isotropic”.' },
         ],
       },
@@ -118,14 +118,14 @@ export const twoConstants: Guide = {
     {
       title: 'A real cubic crystal',
       context: [
-        'Copper, a single crystal seen on its cube face (the crossed lines are its cube axes). Its Zener ratio is about 3.2, so it is like the material you just made with a raised G. The traction σxx stays the same throughout; only the crystal turns.',
+        'A cubic crystal seen on its cube face (the crossed lines are its cube axes). Its Zener ratio is 3, so it is like the material you just made with a raised G. The traction σxx stays the same throughout; only the crystal turns.',
       ],
-      setup: (s) => fresh('cubic-cu', s, { overlays: { materialAxes: true, materialLines: true } }),
+      setup: (s) => fresh('cub-3a', s, { overlays: { materialAxes: true, materialLines: true } }),
       show: ['directional', 'response'],
       predict: {
-        question: 'Along which direction of its cube face will copper be stiffest?',
+        question: 'Along which direction of its cube face will this crystal be stiffest?',
         options: [
-          { text: 'Along a cube edge ⟨100⟩', feedback: 'That would need A < 1. Copper’s A is about 3.2.' },
+          { text: 'Along a cube edge ⟨100⟩', feedback: 'That would need A < 1. This crystal’s A is 3.' },
           { text: 'Along a face diagonal ⟨110⟩, at 45°', correct: true },
           { text: 'Equally stiff in every direction', feedback: 'That would need A = 1.' },
         ],
@@ -153,14 +153,14 @@ export const twoConstants: Guide = {
         ],
       },
       explain: [
-        'E⟨100⟩ = 66.7 GPa and E⟨110⟩ = 130 GPa. Out of this plane, along the body diagonal, E⟨111⟩ = 191 GPa.',
+        'E⟨100⟩ = 70.7 GPa and E⟨110⟩ = 134 GPa. Out of this plane, along the body diagonal, E⟨111⟩ = 190 GPa.',
         'Isotropy demands that no rotation changes anything, and that ties G to E and ν: two constants. Cubic symmetry demands only invariance under 90° rotations about the cube axes, which leaves G free: three constants.',
       ],
     },
     {
       title: 'Now the other way',
-      context: ['Back to the steel-like cubic material, with G again at its isotropic value.'],
-      setup: steelCubic,
+      context: ['Back to the cubic material with isotropic-like E and ν, with G again at its isotropic value.'],
+      setup: isoLikeCubic,
       show: ['directional', 'response'],
       predict: {
         question: 'If G is lowered below its isotropic value instead, where will E be largest?',
@@ -183,22 +183,22 @@ export const twoConstants: Guide = {
       },
       explain: [
         'The lobes swing to the axes: E is now largest along the cube edges and smallest along the diagonals. Both shapes are cubic. The Zener ratio $A = G/G^{\\mathrm{iso}}$, with $G^{\\mathrm{iso}} = E/2(1+\\nu)$, says which: A > 1 puts the lobes on the diagonals, A < 1 on the axes.',
-        'Most cubic metals have A > 1, like the copper you just rotated (about 3.2), iron (about 2.4) and aluminium (about 1.2). Niobium has A ≈ 0.5, and tungsten A ≈ 1, which makes it almost isotropic.',
+        'Most cubic metal crystals have A > 1, often 2 or more, like the crystal you just rotated (A = 3). A few have A < 1, and a few are almost isotropic, with A close to 1.',
       ],
     },
     {
-      title: 'A hypothetical isotropic copper',
+      title: 'An isotropic version of the crystal',
       context: [
-        'A thought experiment, not real copper: keep copper’s E⟨100⟩ = 66.7 GPa and G = 75.4 GPa, and change only ν until the rosette becomes a circle.',
+        'A thought experiment: keep the crystal’s E⟨100⟩ = 70.7 GPa and G = 75 GPa, and change only ν until the rosette becomes a circle.',
       ],
-      setup: (s) => fresh('cubic-cu', s, { overlays: { materialAxes: true, materialLines: true } }),
+      setup: (s) => fresh('cub-3a', s, { overlays: { materialAxes: true, materialLines: true } }),
       show: ['directional'],
       predict: {
         question: 'Which ν would make this material isotropic?',
         options: [
-          { text: 'ν ≈ +0.42', feedback: 'That is copper’s actual ν, which gives the rosette you just saw.' },
-          { text: 'ν ≈ +0.13', feedback: 'Isotropy needs G = E/2(1+ν), so ν = E/2G − 1. Put in E = 66.7 GPa and G = 75.4 GPa.' },
-          { text: 'ν ≈ −0.56', correct: true },
+          { text: 'ν ≈ +0.41', feedback: 'That is the crystal’s own ν, which gives the rosette you just saw.' },
+          { text: 'ν ≈ +0.13', feedback: 'Isotropy needs G = E/2(1+ν), so ν = E/2G − 1. Put in E = 70.7 GPa and G = 75 GPa.' },
+          { text: 'ν ≈ −0.53', correct: true },
           { text: 'No admissible value', feedback: 'The value needed lies inside −1 < ν < ½, so it is admissible.' },
         ],
       },
@@ -212,7 +212,7 @@ export const twoConstants: Guide = {
         },
       },
       explain: [
-        '$\\nu = E/2G - 1 \\approx -0.56$: an isotropic material with copper’s E and G would be auxetic. The cubic anisotropy is a single number, so it can be removed through G or through ν. That is also why $\\nu/\\nu^{\\mathrm{iso}}$ is not a second, independent anisotropy index: it measures the same deviation as the Zener ratio.',
+        '$\\nu = E/2G - 1 \\approx -0.53$: an isotropic material with this crystal’s E and G would be auxetic. The cubic anisotropy is a single number, so it can be removed through G or through ν. That is also why $\\nu/\\nu^{\\mathrm{iso}}$ is not a second, independent anisotropy index: it measures the same deviation as the Zener ratio.',
       ],
     },
   ],

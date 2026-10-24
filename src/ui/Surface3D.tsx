@@ -18,7 +18,22 @@ interface Props {
   S6: Mat;
   /** Material → specimen rotation (columns: axes 1, 2, 3). */
   R: Mat;
+  perspective: boolean;
+  /** Draw the material axes. */
+  materialAxes: boolean;
 }
+
+/**
+ * Viridis from 0.3 to 1 (blue → green → yellow), sampled at its deciles: perceptually uniform and readable with
+ * colour-vision deficiencies. The dark purple end is left out so that labels, dots and axes stay visible on it.
+ */
+const VIRIDIS = ['#355f8d', '#2a788e', '#21918c', '#22a884', '#44bf70', '#7ad151', '#bddf26', '#fde725'].map((h) => new THREE.Color(h));
+function viridis(c: THREE.Color, x: number): THREE.Color {
+  const s = Math.min(Math.max(x, 0), 1) * (VIRIDIS.length - 1);
+  const i = Math.min(Math.floor(s), VIRIDIS.length - 2);
+  return c.copy(VIRIDIS[i]).lerp(VIRIDIS[i + 1], s - i);
+}
+const NEG_LIGHT = new THREE.Color('#f3c3a3');
 
 interface QuantityDef {
   label: string;
@@ -62,7 +77,7 @@ const Q: Record<DirectionalQuantity, QuantityDef> = {
     unit: 'GPa',
     show: toGPa,
     pair: true,
-    note: 'Shear stress on the plane with normal n, in a direction m within it. For each n the solid surface is the smallest G over m and the translucent one the largest.',
+    note: 'Shear stress on the plane with normal n, in a direction m within that plane. G depends on both n and m, so each n has a range of values: the solid surface is the smallest G over m and the translucent one the largest. They are not G₁₂ and G₂₁, which are always equal (G(n, m) = G(m, n)).',
   },
   nu: {
     label: 'ν',
@@ -72,7 +87,7 @@ const Q: Record<DirectionalQuantity, QuantityDef> = {
     unit: '',
     show: (v) => v,
     pair: true,
-    note: 'Lateral strain along m per axial strain along n, under uniaxial stress along n. For each n the solid surface is the smallest ν over m and the translucent one the largest; orange marks negative values (drawn at |ν|): directions in which the material is auxetic.',
+    note: 'Lateral strain along m per axial strain along n, under uniaxial stress along n. ν depends on both n and m, so each n has a range of values: the solid surface is the smallest ν over m and the translucent one the largest. Orange marks negative values (drawn at |ν|), directions in which the material is auxetic. Unlike G, ν(n, m) and ν(m, n) differ in general: ν(n, m)/E(n) = ν(m, n)/E(m).',
   },
 };
 
@@ -99,11 +114,11 @@ function valuesAt(S: Mat, q: DirectionalQuantity, n: number[]): { lo: number; hi
 
 /**
  * Directional properties over every direction n, as surfaces of radius
- * |value|/max|value|, coloured on one hue from smallest (light) to largest
- * (dark), with negative values in orange. Drawn in specimen axes, so they turn
- * with the material.
+ * |value|/max|value|, coloured with the upper part of viridis from smallest
+ * (blue) to largest (yellow), with negative values in orange. Drawn in specimen axes, so they
+ * turn with the material.
  */
-export function Surface3D({ S6, R }: Props) {
+export function Surface3D({ S6, R, perspective, materialAxes }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const viewer = useRef<Viewer | null>(null);
   const group = useRef<THREE.Group | null>(null);
@@ -111,27 +126,29 @@ export function Surface3D({ S6, R }: Props) {
   const [failed, setFailed] = useState(false);
   const [q, setQ] = useState<DirectionalQuantity>('E');
   const [hover, setHover] = useState<{ n: number[]; lo: number; hi: number } | null>(null);
+  // For G and ν: the smallest and the largest value over m, each shown or hidden.
+  const [showLo, setShowLo] = useState(true);
+  const [showHi, setShowHi] = useState(true);
   const ext = useMemo(() => directionalExtremes(S6, q), [S6, q]);
-  const latest = useRef({ S6, R, ext, q });
-  latest.current = { S6, R, ext, q };
+  const latest = useRef({ S6, R, ext, q, showLo, showHi, materialAxes, perspective });
+  latest.current = { S6, R, ext, q, showLo, showHi, materialAxes, perspective };
 
   const draw = () => {
     const v = viewer.current;
     const g = group.current;
     if (!v || !g) return;
-    const { S6: S, R: Rm, ext: e, q: qq } = latest.current;
+    const { S6: S, R: Rm, ext: e, q: qq, showLo: lo, showHi: hi, materialAxes: axesOn } = latest.current;
     clearGroup(g);
+    pickMesh.current = null;
     const def = Q[qq];
     const scale = Math.max(Math.abs(e.max.value), Math.abs(e.min.value));
-    const lo = cssColor('--surface-lo');
-    const hi = cssColor('--surface-hi');
     const neg = cssColor('--reaction');
     const posMax = Math.max(e.max.value, 1e-300);
     const negMin = Math.min(e.min.value, -1e-300);
     const paint = (c: THREE.Color, val: number) =>
       val >= 0
-        ? c.copy(lo).lerp(hi, e.min.value >= 0 ? (val - e.min.value) / Math.max(posMax - e.min.value, 1e-12 * posMax) : val / posMax)
-        : c.copy(lo).lerp(neg, 0.35 + 0.65 * (val / negMin));
+        ? viridis(c, e.min.value >= 0 ? (val - e.min.value) / Math.max(posMax - e.min.value, 1e-12 * posMax) : val / posMax)
+        : c.copy(NEG_LIGHT).lerp(neg, val / negMin);
 
     const segs = def.pair ? [72, 48] : [120, 80];
     // Evaluate every vertex direction once; both surfaces of a pair quantity share the result.
@@ -163,11 +180,21 @@ export function Surface3D({ S6, R }: Props) {
       const mat = new THREE.MeshLambertMaterial({ vertexColors: true, transparent: opacity < 1, opacity, depthWrite: opacity === 1, side: THREE.DoubleSide });
       return new THREE.Mesh(geo, mat);
     };
-    const inner = build('lo', 1);
+    // A single-valued quantity has one surface; a pair shows the ones that are switched on.
+    const showInner = !def.pair || lo;
+    const showOuter = def.pair && hi;
+    if (showInner) {
+      const inner = build('lo', 1);
+      g.add(inner);
+      pickMesh.current = inner;
+    }
+    if (showOuter) {
+      // Translucent over the inner surface; opaque when it is shown alone.
+      const outer = build('hi', showInner ? 0.28 : 1);
+      g.add(outer);
+      pickMesh.current ??= outer;
+    }
     sphere.dispose();
-    g.add(inner);
-    pickMesh.current = inner;
-    if (def.pair) g.add(build('hi', 0.28));
 
     // E: the x–y slice is the 2D polar plot of E(φ) in plane stress.
     if (qq === 'E') {
@@ -182,7 +209,7 @@ export function Surface3D({ S6, R }: Props) {
     }
 
     // Material axes, and the global extremes.
-    for (let a = 0; a < 3; a++) {
+    for (let a = 0; a < (axesOn ? 3 : 0); a++) {
       const d = new THREE.Vector3(Rm[0][a], Rm[1][a], Rm[2][a]);
       g.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints([d.clone().multiplyScalar(-1.2), d.clone().multiplyScalar(1.2)]), new THREE.LineBasicMaterial({ color: cssColor('--material') })));
       const l = v.label(String(a + 1), 'three-label material');
@@ -209,7 +236,7 @@ export function Surface3D({ S6, R }: Props) {
     if (!host.current) return;
     let v: Viewer;
     try {
-      v = createViewer(host.current, { distance: 5.2, onThemeChange: () => draw() });
+      v = createViewer(host.current, { distance: 5.2, perspective: latest.current.perspective, onThemeChange: () => draw() });
     } catch {
       setFailed(true);
       return;
@@ -252,7 +279,8 @@ export function Surface3D({ S6, R }: Props) {
     // The scene is built once; `draw` reads the latest props.
   }, []);
 
-  useEffect(draw, [S6, R, ext, q]);
+  useEffect(draw, [S6, R, ext, q, showLo, showHi, materialAxes]);
+  useEffect(() => viewer.current?.setPerspective(perspective), [perspective]);
 
   const def = Q[q];
   const f = (x: number) => `${fmt(def.show(x), 4, 1e-12)}${def.unit ? ` ${def.unit}` : ''}`;
@@ -275,9 +303,25 @@ export function Surface3D({ S6, R }: Props) {
       ) : (
         <div ref={host} className="three-host" role="img" aria-label={`Surface of ${def.title} over all directions; drag to rotate`} />
       )}
+      {def.pair && (
+        <div className="view-bar">
+          <label className="toggle" title="For each direction n, the smallest value over the directions m perpendicular to it">
+            <input type="checkbox" checked={showLo} onChange={(e) => setShowLo(e.target.checked)} />
+            Smallest over m (solid)
+          </label>
+          <label className="toggle" title="For each direction n, the largest value over the directions m perpendicular to it">
+            <input type="checkbox" checked={showHi} onChange={(e) => setShowHi(e.target.checked)} />
+            Largest over m ({showLo ? 'translucent' : 'opaque when alone'})
+          </label>
+          {!showLo && !showHi && <span className="muted">Both surfaces are hidden.</span>}
+        </div>
+      )}
       <div className="surface-scale" aria-hidden>
         <span>{f(ext.min.value)}</span>
-        <span className={ext.min.value < 0 ? 'surface-ramp signed' : 'surface-ramp'} />
+        <span
+          className={ext.min.value < 0 ? 'surface-ramp signed' : 'surface-ramp'}
+          style={ext.min.value < 0 ? ({ '--zero': `${(100 * -ext.min.value) / (ext.max.value - ext.min.value)}%` } as React.CSSProperties) : undefined}
+        />
         <span>{f(ext.max.value)}</span>
       </div>
       <p className="surface-read">

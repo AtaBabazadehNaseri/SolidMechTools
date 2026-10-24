@@ -80,14 +80,14 @@ Each constant is a compliance quantity from a test with one stress acting alone,
 {
   "format": "solidmechtools.elastic-material",
   "version": 1,
-  "name": "Carbon/epoxy T300/5208",
-  "source": "Tsai & Hahn (1980); out-of-plane values assume transverse isotropy about the fibres",
+  "name": "ORT-9B",
+  "source": "Illustrative values; out-of-plane values assume transverse isotropy about the fibres",
   "units": "GPa",
   "material": {
     "dimension": 3,
     "definition": "constants",
     "symmetry": "orthotropic",
-    "constants": { "E1": 181, "E2": 10.3, "E3": 10.3, "nu12": 0.28, "nu13": 0.28, "nu23": 0.4, "G23": 3.679, "G13": 7.17, "G12": 7.17 }
+    "constants": { "E1": 180, "E2": 10, "E3": 10, "nu12": 0.3, "nu13": 0.3, "nu23": 0.4, "G23": 3.571, "G13": 7, "G12": 7 }
   },
   "orientation": { "axis1": [0.866, 0.5, 0], "axis2": [-0.5, 0.866, 0], "axis3": [0, 0, 1] },
   "view": { "thetaDeg": 0, "mode": "stress" }
@@ -100,7 +100,7 @@ Each constant is a compliance quantity from a test with one stress acting alone,
 {
   "format": "solidmechtools.elastic-material",
   "version": 1,
-  "name": "Copper single crystal",
+  "name": "CUB-3A",
   "units": "GPa",
   "material": {
     "dimension": 3,
@@ -109,12 +109,12 @@ Each constant is a compliance quantity from a test with one stress acting alone,
     "order": ["11", "22", "33", "23", "13", "12"],
     "shear": "engineering",
     "matrix": [
-      [168.4, 121.4, 121.4, 0, 0, 0],
-      [121.4, 168.4, 121.4, 0, 0, 0],
-      [121.4, 121.4, 168.4, 0, 0, 0],
-      [0, 0, 0, 75.4, 0, 0],
-      [0, 0, 0, 0, 75.4, 0],
-      [0, 0, 0, 0, 0, 75.4]
+      [170, 120, 120, 0, 0, 0],
+      [120, 170, 120, 0, 0, 0],
+      [120, 120, 170, 0, 0, 0],
+      [0, 0, 0, 75, 0, 0],
+      [0, 0, 0, 0, 75, 0],
+      [0, 0, 0, 0, 0, 75]
     ]
   }
 }

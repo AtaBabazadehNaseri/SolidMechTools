@@ -153,7 +153,13 @@ export function Details({ state, derived, material, mode }: { state: LabState; d
       </details>
 
       <details>
-        <summary>Material data sources</summary>
+        <summary>About the example materials</summary>
+        <p className="hint">
+          The examples are hypothetical materials, named by symmetry class and number of independent constants: CUB-3A is the first
+          cubic example, with 3 constants. Their values are rounded and chosen to show a behaviour; they are not data for any real
+          material and must not be used as such. Where an example is loosely based on published constants, the publication is cited
+          below for transparency only.
+        </p>
         <ul className="assumptions">
           {state.userPreset && (
             <li>
@@ -162,8 +168,7 @@ export function Details({ state, derived, material, mode }: { state: LabState; d
           )}
           {PRESETS.map((p) => (
             <li key={p.id}>
-              <b>{p.name}</b>
-              {p.illustrative ? ' (illustrative)' : ''}: {p.source}
+              <b>{p.name}</b> ({p.kind}): {p.source} {p.basis}
             </li>
           ))}
         </ul>

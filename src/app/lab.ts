@@ -53,6 +53,7 @@ import {
   planeExtremes,
   planeStiffness,
   rotateComplianceVoigt,
+  rotationAxisAngle,
   scale,
   snapTargets,
   solveMixed,
@@ -112,6 +113,8 @@ export interface LabState {
   /** A material entered by the user; `presetId` is 'user' while it is the starting point. */
   userPreset: MaterialPreset | null;
   thetaDeg: number;
+  /** Tilts of the material about the specimen axes x and y, applied before θ (degrees). */
+  tiltDeg: [number, number];
   mode: PlaneMode;
   /** The plane mode is kept while in 3D, for returning to 2D. */
   space: Space;
@@ -126,7 +129,17 @@ export interface LabState {
   overlays: Overlays;
   /** Direction of the cut's unit normal, degrees from x. */
   cutDeg: number;
+  /** The 3D cut's unit normal: azimuth from x in the x–y plane and elevation towards z (degrees). */
+  cut3Deg: [number, number];
+  /** 3D view options. */
+  view3: View3;
   mohr: 'stress' | 'strain';
+}
+
+export interface View3 {
+  perspective: boolean;
+  /** The x–y mid-plane, the section the 2D lab takes. */
+  section: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -222,15 +235,20 @@ export function presetOf(s: Pick<LabState, 'presetId' | 'userPreset'>): Material
   return PRESETS.find((p) => p.id === s.presetId) ?? PRESETS[0];
 }
 
-/** Material → specimen rotation before the in-plane rotation θ. */
-export function baseRotation(s: Pick<LabState, 'section' | 'customR'>): Mat {
-  return s.section === 'custom' && s.customR ? s.customR : SECTIONS[s.section === 'custom' ? 'n3' : s.section].R;
+/** Material → specimen rotation before the in-plane rotation θ: the section (or entered orientation), then the tilts about x and y. */
+export function baseRotation(s: Pick<LabState, 'section' | 'customR'> & { tiltDeg?: [number, number] }): Mat {
+  const R0 = s.section === 'custom' && s.customR ? s.customR : SECTIONS[s.section === 'custom' ? 'n3' : s.section].R;
+  const [ax, ay] = s.tiltDeg ?? [0, 0];
+  if (ax === 0 && ay === 0) return R0;
+  const rad = Math.PI / 180;
+  return matMul(rotationAxisAngle([0, 1, 0], ay * rad), matMul(rotationAxisAngle([1, 0, 0], ax * rad), R0));
 }
 
 /** 2D data: in-plane constants only, with the plane state fixed. */
 export const isPlaneData = (s: Pick<LabState, 'classId'>) => SYMMETRY_CLASSES[s.classId].dimension === 2;
 
 const DEFAULT_OVERLAYS: Overlays = { materialAxes: true, materialLines: true, principalStress: false, principalStrain: false, cut: false };
+const DEFAULT_VIEW3: View3 = { perspective: true, section: true };
 
 export function initialState(presetId: string, keep?: Partial<LabState>): LabState {
   return initialStateFrom(PRESETS.find((p) => p.id === presetId) ?? PRESETS[0], keep);
@@ -257,6 +275,7 @@ export function initialStateFrom(preset: MaterialPreset, keep?: Partial<LabState
     customR,
     userPreset: preset.id === 'user' ? preset : (keep?.userPreset ?? null),
     thetaDeg: 0,
+    tiltDeg: [0, 0],
     mode,
     // 2D data has no 3D behaviour.
     space: cls.dimension === 2 ? '2d' : (keep?.space ?? '2d'),
@@ -268,6 +287,8 @@ export function initialStateFrom(preset: MaterialPreset, keep?: Partial<LabState
     pinned: null,
     overlays: keep?.overlays ?? DEFAULT_OVERLAYS,
     cutDeg: keep?.cutDeg ?? 60,
+    cut3Deg: keep?.cut3Deg ?? [30, 25],
+    view3: keep?.view3 ?? DEFAULT_VIEW3,
     mohr: keep?.mohr ?? 'stress',
   };
 }
@@ -287,6 +308,12 @@ export type Action =
   /** Start from a material entered by the user (it becomes the 'user' preset). */
   | { type: 'loadMaterial'; preset: MaterialPreset; thetaDeg?: number }
   | { type: 'theta'; deg: number }
+  /** Tilt about specimen axis x (0) or y (1). */
+  | { type: 'tilt'; axis: 0 | 1; deg: number }
+  /** Set the material axes directly (columns: axes 1, 2, 3 in x, y, z); θ and the tilts start again from zero. */
+  | { type: 'orientation'; R: Mat }
+  /** θ and both tilts back to zero. */
+  | { type: 'resetOrientation' }
   | { type: 'mode'; mode: PlaneMode }
   | { type: 'control'; i: number; control: Control }
   | { type: 'loadValue'; i: number; value: number }
@@ -301,13 +328,25 @@ export type Action =
   | { type: 'pin'; snapshot: Snapshot | null }
   | { type: 'overlay'; key: keyof Overlays; on: boolean }
   | { type: 'cut'; deg: number }
+  | { type: 'cut3'; deg: [number, number] }
+  | { type: 'view3'; key: keyof View3; on: boolean }
   | { type: 'mohr'; kind: 'stress' | 'strain' }
   /** Used by guides to set up a step. */
   | { type: 'replace'; state: LabState };
 
 export function reducer(state: LabState, a: Action): LabState {
   // The user's material and orientation survive switching to an example and back.
-  const keep = { mode: state.mode, space: state.space, overlays: state.overlays, cutDeg: state.cutDeg, mohr: state.mohr, userPreset: state.userPreset, customR: state.customR };
+  const keep = {
+    mode: state.mode,
+    space: state.space,
+    overlays: state.overlays,
+    cutDeg: state.cutDeg,
+    cut3Deg: state.cut3Deg,
+    view3: state.view3,
+    mohr: state.mohr,
+    userPreset: state.userPreset,
+    customR: state.customR,
+  };
   switch (a.type) {
     case 'preset':
       return a.id === 'user' && state.userPreset ? initialStateFrom(state.userPreset, keep) : initialState(a.id, keep);
@@ -350,6 +389,18 @@ export function reducer(state: LabState, a: Action): LabState {
       return { ...state, section: a.section };
     case 'theta':
       return { ...state, thetaDeg: a.deg };
+    case 'tilt': {
+      // 2D data can only turn about z.
+      if (isPlaneData(state)) return state;
+      const tiltDeg: [number, number] = [...state.tiltDeg];
+      tiltDeg[a.axis] = a.deg;
+      return { ...state, tiltDeg };
+    }
+    case 'orientation':
+      if (isPlaneData(state)) return state;
+      return { ...state, section: 'custom', customR: a.R, thetaDeg: 0, tiltDeg: [0, 0] };
+    case 'resetOrientation':
+      return { ...state, thetaDeg: 0, tiltDeg: [0, 0] };
     case 'mode':
       // 2D data describes one plane state; the other one needs the out-of-plane constants.
       if (isPlaneData(state)) return state;
@@ -381,6 +432,10 @@ export function reducer(state: LabState, a: Action): LabState {
       return { ...state, overlays: { ...state.overlays, [a.key]: a.on } };
     case 'cut':
       return { ...state, cutDeg: a.deg };
+    case 'cut3':
+      return { ...state, cut3Deg: a.deg };
+    case 'view3':
+      return { ...state, view3: { ...state.view3, [a.key]: a.on } };
     case 'mohr':
       return { ...state, mohr: a.kind };
     case 'replace':
@@ -733,4 +788,36 @@ export function numericalChecks(s: LabState, d: LabDerived): NumericalCheck[] {
       detail: s.mode === 'stress' ? '3D C applied to the full strain gives σzz = τyz = τxz = 0.' : '3D C applied to the full strain reproduces the reported reactions.',
     });
   return checks;
+}
+
+/** The unit normal of the 3D cut from its azimuth (from x, in the x–y plane) and elevation (towards z), in degrees. */
+export function cutNormal3([az, el]: [number, number]): [number, number, number] {
+  const a = (az * Math.PI) / 180;
+  const e = (el * Math.PI) / 180;
+  return [Math.cos(e) * Math.cos(a), Math.cos(e) * Math.sin(a), Math.sin(e)];
+}
+
+export interface Cut3 {
+  n: [number, number, number];
+  /** t = σ·n, and its normal and shear parts (MPa). */
+  traction: number[];
+  normal: number;
+  shear: number;
+  /** The same split of ε·n, with tensor shear (γ/2), as Mohr's circle of strain uses. */
+  strainNormal: number;
+  strainShear: number;
+}
+
+/** The traction on a plane through the cube with normal n, and the strain counterpart. */
+export function cut3Of(stress: number[], strain: number[], deg: [number, number]): Cut3 {
+  const n = cutNormal3(deg);
+  const split = (T: Mat) => {
+    const t = T.map((row) => row[0] * n[0] + row[1] * n[1] + row[2] * n[2]);
+    const normal = t[0] * n[0] + t[1] * n[1] + t[2] * n[2];
+    const shear = Math.hypot(t[0] - normal * n[0], t[1] - normal * n[1], t[2] - normal * n[2]);
+    return { t, normal, shear };
+  };
+  const s = split(stressTensor(stress));
+  const e = split(strainTensor(strain));
+  return { n, traction: s.t, normal: s.normal, shear: s.shear, strainNormal: e.normal, strainShear: e.shear };
 }

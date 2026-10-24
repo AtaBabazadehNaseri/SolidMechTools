@@ -11,7 +11,10 @@ import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer
 
 export interface Viewer {
   scene: THREE.Scene;
-  camera: THREE.PerspectiveCamera;
+  /** The camera in use: perspective or orthographic. */
+  readonly camera: THREE.PerspectiveCamera | THREE.OrthographicCamera;
+  /** Switch between a perspective and an orthographic (parallel) projection, keeping the view direction and size. */
+  setPerspective: (on: boolean) => void;
   render: () => void;
   /** A text label anchored at a 3D point; `className` styles it. */
   label: (text: string, className: string) => CSS2DObject;
@@ -24,7 +27,7 @@ export function cssColor(name: string): THREE.Color {
   return new THREE.Color(v || '#888888');
 }
 
-export function createViewer(host: HTMLElement, opts: { distance: number; onThemeChange?: () => void }): Viewer {
+export function createViewer(host: HTMLElement, opts: { distance: number; perspective?: boolean; onThemeChange?: () => void }): Viewer {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   host.appendChild(renderer.domElement);
@@ -33,20 +36,65 @@ export function createViewer(host: HTMLElement, opts: { distance: number; onThem
   labels.domElement.className = 'three-labels';
   host.appendChild(labels.domElement);
 
+  const FOV = 32;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+  const persp = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
+  // The orthographic frustum shows what the perspective camera shows at the default distance.
+  const half = opts.distance * Math.tan(((FOV / 2) * Math.PI) / 180);
+  const ortho = new THREE.OrthographicCamera(-half, half, half, -half, 0.1, 100);
+  let camera: THREE.PerspectiveCamera | THREE.OrthographicCamera = persp;
   // An oblique view that shows the x, y and z faces.
-  camera.position.set(0.62, 0.42, 0.66).normalize().multiplyScalar(opts.distance);
+  persp.position.set(0.62, 0.42, 0.66).normalize().multiplyScalar(opts.distance);
   scene.add(new THREE.AmbientLight(0xffffff, 1.6));
   const sun = new THREE.DirectionalLight(0xffffff, 1.4);
   sun.position.set(2, 3, 4);
-  camera.add(sun);
-  scene.add(camera);
+  persp.add(sun);
+  scene.add(persp, ortho);
 
-  const controls = new OrbitControls(camera, labels.domElement);
+  const controls = new OrbitControls<THREE.PerspectiveCamera | THREE.OrthographicCamera>(persp, labels.domElement);
   controls.enablePan = false;
   controls.minDistance = opts.distance * 0.5;
   controls.maxDistance = opts.distance * 2.2;
+  controls.minZoom = 1 / 2.2;
+  controls.maxZoom = 2;
+
+  // On narrow (phone) views, widen the view so the whole scene still fits.
+  let fit = 1;
+  const project = () => {
+    const w = host.clientWidth || 1;
+    const h = host.clientHeight || 1;
+    persp.aspect = w / h;
+    persp.zoom = fit;
+    persp.updateProjectionMatrix();
+    const a = w / h;
+    ortho.left = (-half * a) / fit;
+    ortho.right = (half * a) / fit;
+    ortho.top = half / fit;
+    ortho.bottom = -half / fit;
+    ortho.updateProjectionMatrix();
+  };
+
+  const setPerspective = (on: boolean) => {
+    if ((camera === persp) === on) return;
+    const dir = camera.position.clone().normalize();
+    if (on) {
+      // The same apparent size: distance d shows what zoom d₀/d shows in parallel projection.
+      const d = THREE.MathUtils.clamp(opts.distance / ortho.zoom, controls.minDistance, controls.maxDistance);
+      persp.position.copy(dir.multiplyScalar(d));
+      persp.quaternion.copy(ortho.quaternion);
+      camera = persp;
+    } else {
+      ortho.zoom = THREE.MathUtils.clamp(opts.distance / persp.position.length(), controls.minZoom, controls.maxZoom);
+      ortho.position.copy(dir.multiplyScalar(opts.distance));
+      ortho.quaternion.copy(persp.quaternion);
+      camera = ortho;
+    }
+    camera.add(sun);
+    controls.object = camera;
+    project();
+    controls.update();
+    render();
+  };
 
   let frame = 0;
   const render = () => {
@@ -65,15 +113,14 @@ export function createViewer(host: HTMLElement, opts: { distance: number; onThem
     if (!w || !h) return;
     renderer.setSize(w, h);
     labels.setSize(w, h);
-    camera.aspect = w / h;
-    // On narrow (phone) views, widen the field of view so the whole scene still fits.
-    camera.zoom = Math.min(1, w / h / 1.55);
-    camera.updateProjectionMatrix();
+    fit = Math.min(1, w / h / 1.55);
+    project();
     render();
   };
   const ro = new ResizeObserver(resize);
   ro.observe(host);
   resize();
+  if (opts.perspective === false) setPerspective(false);
 
   // Colours come from the theme tokens; repaint when the theme changes.
   const mo = new MutationObserver(() => {
@@ -91,7 +138,10 @@ export function createViewer(host: HTMLElement, opts: { distance: number; onThem
 
   return {
     scene,
-    camera,
+    get camera() {
+      return camera;
+    },
+    setPerspective,
     render,
     label,
     dispose: () => {

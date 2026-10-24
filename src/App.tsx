@@ -45,8 +45,8 @@ const MODE_TIPS: Record<string, string> = {
   '3d': 'The full 3D response of a cube: all six stress components, each traction- or displacement-controlled.',
 };
 
-// The Lab shows everything; the rotation sweep sits inside the directional panel there.
-const ALL_PANELS: PanelId[] = ['matrices', 'loads', 'directional', 'principal', 'kelvin', 'response', 'ladder'];
+// The Lab shows everything, with the rotation sweep as an open panel under the directional plot.
+const ALL_PANELS: PanelId[] = ['matrices', 'loads', 'directional', 'sweep', 'principal', 'kelvin', 'response', 'ladder'];
 
 function omit<T>(o: Record<number, T>, k: number): Record<number, T> {
   return Object.fromEntries(Object.entries(o).filter(([key]) => Number(key) !== k));
@@ -71,7 +71,7 @@ function saveCompleted(s: Set<string>) {
 
 /** A material carried by the URL (a share link), or the default example. */
 function startState(): { state: LabState; message: string | null } {
-  const fallback = initialState('iso-steel');
+  const fallback = initialState('iso-2a');
   const read = typeof location === 'undefined' ? null : decodeFragment(location.hash);
   if (!read) return { state: fallback, message: null };
   if ('error' in read) return { state: fallback, message: `The link could not be opened: ${read.error}` };
@@ -114,8 +114,8 @@ export default function App() {
   };
   const startGuide = (id: string) => {
     const g = GUIDES.find((x) => x.id === id)!;
-    // Guides run on the 2D lab.
-    const start = { ...state, space: '2d' as const };
+    // Guides run on the 2D lab, with the material untilted.
+    const start = { ...state, space: '2d' as const, tiltDeg: [0, 0] as [number, number] };
     const fresh: GuideRun = { guideId: id, step: 0, answers: {}, observed: {}, solved: {}, start };
     dispatch({ type: 'replace', state: entryState(g, 0, start, false) });
     setRun(fresh);
@@ -221,7 +221,9 @@ export default function App() {
                   <button onClick={() => dispatch({ type: 'resetLoad' })} title="Back to uniaxial stress">
                     Boundary conditions
                   </button>
-                  <button onClick={() => dispatch({ type: 'theta', deg: 0 })}>Orientation (θ = 0)</button>
+                  <button onClick={() => dispatch({ type: 'resetOrientation' })} title="θ and both tilts back to zero">
+                    Orientation (θ, tilts = 0)
+                  </button>
                   <button onClick={() => dispatch({ type: 'reset' })} title="Material, section, orientation, loading and magnification">
                     Everything
                   </button>
@@ -358,7 +360,8 @@ export default function App() {
               <MagnificationControl state={state} dispatch={dispatch} maxStrain={Math.max(...response.strain.map(Math.abs))} />
             </section>
             {show.has('loads') && <LoadPanel state={state} dispatch={dispatch} locked={!predicted} />}
-            {show.has('directional') && !directionalRight && <DirectionalPanel state={state} derived={derived} material={material} dispatch={dispatch} />}
+            {show.has('directional') && !directionalRight && <DirectionalPanel state={state} derived={derived} material={material} dispatch={dispatch} sweep={false} />}
+            {!inGuide && <RotationSweep state={state} onTheta={(deg) => dispatch({ type: 'theta', deg })} panel />}
           </div>
 
           {hasRight && (
@@ -383,6 +386,21 @@ export default function App() {
       )}
 
       {view === 'lab' && <Details state={state} derived={derived} material={material} mode={state.mode} />}
+
+      <footer className="app-foot">
+        <p>
+          An educational project for exploring linear elasticity. The example materials are hypothetical, with rounded values chosen
+          for teaching; they are not data for any real material. Nothing here is checked or intended for design, analysis or
+          certification. Provided as is, without warranty of any kind (GPL-2.0). A personal project, not affiliated with any employer
+          or organization.
+        </p>
+        <p>
+          No analytics and no cookies. Everything is computed in your browser; a share link carries its material after the “#”,
+          which browsers do not send to the server. <a href="https://github.com/AtaBabazadehNaseri/SolidMechTools">Source code</a>
+          {' · '}
+          <a href="https://github.com/AtaBabazadehNaseri/SolidMechTools/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices</a>
+        </p>
+      </footer>
     </div>
   );
 }

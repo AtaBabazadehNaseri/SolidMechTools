@@ -43,6 +43,7 @@ export function Readouts3D({ state, derived }: { state: LabState; derived: LabDe
       <div className="energy">
         Strain energy density <Tex>{'W = \\tfrac12\\,\\boldsymbol{\\sigma}\\cdot\\boldsymbol{\\varepsilon}'}</Tex> = <b>{fmt(energy * 1000, 4)}</b> kJ/m³
       </div>
+      <FullTensors stress={response.stress} strain={response.strain} />
 
       <h3>
         Apparent stiffness dσxx/dεxx = <span className="ladder-now">{fmt(toGPa(am.value), 4)} GPa</span>
@@ -52,5 +53,32 @@ export function Readouts3D({ state, derived }: { state: LabState; derived: LabDe
         modulus along x) and <Tex>{'C_{11}'}</Tex> = {fmt(toGPa(am.locked), 4)} GPa (every other strain held). Each hold can only raise it.
       </p>
     </section>
+  );
+}
+
+const texNum = (v: number, tol: number) => fmt(v, 4, tol).replace(/−/g, '-');
+
+/** The cube's stress and strain as 3×3 tensors (tensor shear εij = γij/2), rows and columns x, y, z. */
+function FullTensors({ stress, strain }: { stress: number[]; strain: number[] }) {
+  const [sxx, syy, szz, syz, sxz, sxy] = stress;
+  const [exx, eyy, ezz, gyz, gxz, gxy] = strain.map(toMilli);
+  const sTol = 1e-9 * Math.max(...stress.map(Math.abs), 1e-300);
+  const eTol = 1e-9 * Math.max(...[exx, eyy, ezz, gyz, gxz, gxy].map(Math.abs), 1e-300);
+  const s = (v: number) => texNum(v, sTol);
+  const e = (v: number) => texNum(v, eTol);
+  const mat = (rows: string[][]) => `\\begin{bmatrix} ${rows.map((row) => row.join(' & ')).join(' \\\\ ')} \\end{bmatrix}`;
+  const sigma = mat([[s(sxx), s(sxy), s(sxz)], [s(sxy), s(syy), s(syz)], [s(sxz), s(syz), s(szz)]]);
+  const eps = mat([[e(exx), e(gxy / 2), e(gxz / 2)], [e(gxy / 2), e(eyy), e(gyz / 2)], [e(gxz / 2), e(gyz / 2), e(ezz)]]);
+  return (
+    <details className="tensors" open>
+      <summary>Stress and strain tensors</summary>
+      <div className="tensor-row">
+        <Tex display>{`\\boldsymbol\\sigma = ${sigma}\\ \\text{MPa}`}</Tex>
+        <Tex display>{`\\boldsymbol\\varepsilon = ${eps}\\times 10^{-3}`}</Tex>
+      </div>
+      <p className="hint">
+        Rows and columns x, y, z. The tensor uses ε<sub>ij</sub> = γ<sub>ij</sub>/2; the table above lists the engineering shears γ.
+      </p>
+    </details>
   );
 }

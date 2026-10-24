@@ -13,9 +13,9 @@ export const pullWithoutShear: Guide = {
     {
       title: 'An aligned composite',
       context: [
-        'A unidirectional carbon/epoxy ply (T300/5208). The teal lines are the fibres, here along x. Once you answer, the ply is pulled along x with every other traction zero.',
+        'A unidirectional fibre-composite ply. The teal lines are the fibres, here along x. Once you answer, the ply is pulled along x with every other traction zero.',
       ],
-      setup: (s) => unloaded(fresh('ortho-cfrp', s, fibres)),
+      setup: (s) => unloaded(fresh('ort-9b', s, fibres)),
       show: ['matrices'],
       predict: {
         question: 'Pulled along its fibres, will the ply shear?',
@@ -119,7 +119,7 @@ export const pullWithoutShear: Guide = {
     {
       title: 'A softer matrix',
       context: ['Back to fibres along x. The shear modulus G₁₂ is governed mostly by the resin, so a softer matrix means a lower G₁₂.'],
-      setup: (s) => fresh('ortho-cfrp', s, fibres),
+      setup: (s) => fresh('ort-9b', s, fibres),
       show: ['directional'],
       predict: {
         question: 'Can making the resin softer in shear create a new direction along which a pull does not shear?',
@@ -149,7 +149,7 @@ export const pullWithoutShear: Guide = {
         ],
       },
       explain: [
-        'Below $G_{12} \\approx 5.07$ GPa (for these E₁, E₂, ν₁₂) the minimum of E(φ) leaves the 90° direction and moves off-axis. The weakest direction is then neither along nor across the fibres, and pulling along it produces no shear either.',
+        'Below $G_{12} \\approx 4.92$ GPa (for these E₁, E₂, ν₁₂) the minimum of E(φ) leaves the 90° direction and moves off-axis. The weakest direction is then neither along nor across the fibres, and pulling along it produces no shear either.',
         'The condition is $1/G_{12} > 2/E_2 + 2\\nu_{12}/E_1$. Composites with a compliant matrix often satisfy it.',
       ],
     },
@@ -181,7 +181,7 @@ export const pullWithoutShear: Guide = {
       context: [
         'Some materials shear under tension even in their own axes. In this monoclinic material the coupling is a material constant, $\\eta_{12,1} = \\gamma_{12}/\\varepsilon_{1}$ under $\\sigma_1$, and the pull runs along axis 1.',
       ],
-      setup: (s) => fresh('mono-coupled', s, fibres),
+      setup: (s) => fresh('mon-13b', s, fibres),
       show: ['matrices', 'response'],
       predict: {
         question: 'If η₁₂,₁ were driven from positive through zero to negative, what would happen to the skew?',

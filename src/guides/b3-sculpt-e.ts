@@ -6,7 +6,7 @@ import { fresh, withParam } from './helpers';
 
 const fibres = { overlays: { materialAxes: true, materialLines: true } };
 
-/** An orthotropic material that starts with steel's constants in every direction. */
+/** An orthotropic material that starts with isotropic constants (E = 200 GPa, ν = 0.3) in every direction. */
 const G_ISO = 200_000 / 2.6;
 export const ISO_ORTHO = { E1: 200_000, E2: 200_000, E3: 200_000, nu12: 0.3, nu13: 0.3, nu23: 0.3, G12: G_ISO, G13: G_ISO, G23: G_ISO };
 /** Constants reached at the end of steps 1 and 2. */
@@ -46,9 +46,9 @@ export const sculptE: Guide = {
     {
       title: 'Stretch the circle',
       context: [
-        'An orthotropic material that starts with steel’s values in every direction, so E(φ) is a circle of 200 GPa. In this plane four of its constants shape E(φ): E₁, E₂, G₁₂ and ν₁₂. Axis 1 (teal) lies along x.',
+        'An orthotropic material that starts with the same values in every direction (E = 200 GPa, ν = 0.30), so E(φ) is a circle of 200 GPa. In this plane four of its constants shape E(φ): E₁, E₂, G₁₂ and ν₁₂. Axis 1 (teal) lies along x.',
       ],
-      setup: (s) => fresh('ortho-cfrp', s, { ...fibres, params: ISO_ORTHO }),
+      setup: (s) => fresh('ort-9b', s, { ...fibres, params: ISO_ORTHO }),
       show: ['directional'],
       predict: {
         question: 'If E₁ were doubled to 400 GPa, with every other constant unchanged, what would E be at 45°?',
@@ -159,15 +159,15 @@ export const sculptE: Guide = {
     {
       title: 'A real crystal',
       context: [
-        'Diopside, a monoclinic pyroxene, seen in its mirror plane: axis 1 (teal) is the crystal’s c axis, axis 2 its a* axis. A monoclinic crystal has no symmetry axis in this plane; its only 2-fold axis is normal to it.',
+        'A monoclinic crystal seen in its mirror plane: axes 1 (teal) and 2 are its crystal axes in that plane. A monoclinic crystal has no symmetry axis in this plane; its only 2-fold axis is normal to it.',
       ],
-      setup: (s) => fresh('mono-diopside', s, fibres),
+      setup: (s) => fresh('mon-13a', s, fibres),
       show: ['directional'],
       predict: {
-        question: 'Will diopside’s stiffest direction in this plane lie along one of its crystal axes?',
+        question: 'Will this crystal’s stiffest direction in this plane lie along one of its axes?',
         options: [
-          { text: 'Yes, along c (axis 1)', feedback: 'Axis 1 is a convenient choice for writing the constants, nothing more. In this plane symmetry does not single it out.' },
-          { text: 'Yes, along a* (axis 2)', feedback: 'Nothing in this plane singles out a* either.' },
+          { text: 'Yes, along axis 1', feedback: 'Axis 1 is a convenient choice for writing the constants, nothing more. In this plane symmetry does not single it out.' },
+          { text: 'Yes, along axis 2', feedback: 'Nothing in this plane singles out axis 2 either.' },
           { text: 'Not necessarily: no symmetry fixes it in this plane', correct: true },
         ],
       },
@@ -182,7 +182,7 @@ export const sculptE: Guide = {
         },
       },
       explain: [
-        'Diopside is stiffest about 23° from its c axis, at 253 GPa. In the mirror plane of a monoclinic crystal no direction is fixed by symmetry, so the extremes of E(φ) can sit anywhere. In the orthotropic material above the axes were always stationary, and the maximum still left them once G₁₂ was large enough.',
+        'This crystal is stiffest about 24° from axis 1, at 251 GPa. In the mirror plane of a monoclinic crystal no direction is fixed by symmetry, so the extremes of E(φ) can sit anywhere. In the orthotropic material above the axes were always stationary, and the maximum still left them once G₁₂ was large enough.',
         'Crystal and material axes are a convenient frame for the constants, not a list of the stiffest directions.',
       ],
     },
